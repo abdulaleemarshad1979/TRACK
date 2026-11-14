@@ -1534,7 +1534,6 @@ body.wall .ps-turnout b{color:#5aa2ff}
     <div class="hright">
       <span class="conn" id="conn">Live</span>
       <span class="clock" id="clock"></span>
-      <button class="ibtn" id="dutyPointsBtn" type="button" hidden>Duty points</button>
       <button class="ibtn vbtn3" id="voiceBtn" type="button" title="Record and send a voice message to the route mobiles">🎤 Voice</button>
       <button class="ibtn bell" id="bellBtn" type="button" title="Alerts">🔔<b id="bellN" hidden></b></button>
       <button class="ibtn" id="panelBtn" type="button" title="Hide the side panel beside the map">Hide panel ◂</button>
@@ -5260,7 +5259,6 @@ function start() {
   if (booted) return; booted = true;
   $('#app').hidden = false; $('#login').hidden = true;
   $('#who').textContent = AU.email || '';
-  $('#dutyPointsBtn').hidden = USER_ROLE !== 'admin';
   bridgeAuth();
   initMap();
   stream('devices', '', DEV, () => { loadTrails(); schedule(); }, { every: 15000 });
@@ -6683,79 +6681,6 @@ async function siMonitorModal(editUid = '', existing = null) {
   form.querySelector('[name=officer]').focus();
 }
 function xlsTemplate(name, H, ex) { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([H, ...ex]), 'Sheet1'); XLSX.writeFile(wb, name); }
-
-async function dutyPointModal() {
-  if (await dbGet('roles/' + AU.uid) !== 'admin') throw new Error('Administrator access is required.');
-  const [assignments, scopes] = await Promise.all([dbGet('assignments'), dbGet('siScopes')]);
-  const people = Object.entries({ ...(assignments || {}), ...(scopes || {}) })
-    .map(([uid, person]) => ({ uid, name: person.officer || uid, rank: person.rank || person.designation || '' }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const modal = document.createElement('div'); modal.className = 'modal member-modal';
-  modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); modal.setAttribute('aria-label', 'Assign duty point');
-  modal.innerHTML = `<form class="card" style="max-height:90vh;overflow:auto"><h2>Assign duty point</h2>
-    <p class="note">Use approved event and roster details. Times are shown in Asia/Kolkata. A point change during active duty requires the officer to stop first.</p>
-    <label class="f">Officer or official<select name="uid" required><option value="">Choose account</option>${people.map(p => `<option value="${esc(p.uid)}">${esc(p.name)} · ${esc(p.rank)} · ${esc(p.uid)}</option>`).join('')}</select></label>
-    <label class="f">Designation<input name="designation" maxlength="80"></label>
-    <label class="f">Reports to (supervisor UID)<input name="supervisorUid" list="dutySupervisors" placeholder="Authenticated supervisor UID"></label>
-    <datalist id="dutySupervisors">${Object.entries(scopes || {}).map(([uid, s]) => `<option value="${esc(uid)}">${esc(s.officer || uid)}</option>`).join('')}</datalist>
-    <label class="f">Event ID<input name="eventId" required maxlength="80" placeholder="Approved event ID"></label>
-    <label class="f">Event name<input name="eventName" required maxlength="120"></label>
-    <label class="f">Sector ID<input name="sectorId" required maxlength="80"></label>
-    <label class="f">Reporting group ID<input name="reportingGroupId" maxlength="80"></label>
-    <label class="f">Duty point ID<input name="pointId" required maxlength="80"></label>
-    <label class="f">Duty point name<input name="pointName" required maxlength="120"></label>
-    <div class="row"><label class="f">Latitude<input name="lat" type="number" step="any" min="-90" max="90" required></label><label class="f">Longitude<input name="lng" type="number" step="any" min="-180" max="180" required></label><label class="f">Radius (metres)<input name="radiusM" type="number" min="30" max="2000" value="100" required></label></div>
-    <label class="f">Window start, IST<input name="windowStart" type="datetime-local"></label><label class="f">Window end, IST<input name="windowEnd" type="datetime-local"></label>
-    <label class="f">Duty instructions<textarea name="instructions" rows="2" maxlength="1000"></textarea></label>
-    <label class="row"><input name="grantScope" type="checkbox">Grant this official access to this event and sector (viewer account only)</label>
-    <div class="err" role="alert"></div><div class="row" style="justify-content:flex-end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Save assignment</button></div></form>`;
-  document.body.appendChild(modal);
-  const form = modal.querySelector('form');
-  modal.querySelector('[data-close]').onclick = () => modal.remove();
-  const toLocal = t => t ? new Date(Number(t) + 330 * 60000).toISOString().slice(0, 16) : '';
-  form.elements.uid.onchange = () => {
-    const a = assignments?.[form.elements.uid.value] || {}, p = a.dutyPoint || {};
-    for (const [name, value] of Object.entries({ designation: a.designation || '', supervisorUid: a.supervisorUid || '', eventId: p.eventId || '', eventName: p.eventName || '', sectorId: p.sectorId || '', reportingGroupId: p.reportingGroupId || '', pointId: p.id || '', pointName: p.name || '', lat: p.lat ?? '', lng: p.lng ?? '', radiusM: p.radiusM || 100, windowStart: toLocal(p.windowStart), windowEnd: toLocal(p.windowEnd), instructions: p.instructions || '' })) form.elements[name].value = value;
-  };
-  form.onsubmit = async e => {
-    e.preventDefault(); const button = form.querySelector('[type=submit]'); button.disabled = true; form.querySelector('.err').textContent = '';
-    try {
-      if (await dbGet('roles/' + AU.uid) !== 'admin') throw new Error('Administrator access is required.');
-      const data = new FormData(form), uid = String(data.get('uid')), role = await dbGet('roles/' + uid);
-      if (!['route', 'si_monitor'].includes(role)) throw new Error('Choose an approved officer or viewer account.');
-      const supervisorUid = String(data.get('supervisorUid') || '').trim();
-      if (supervisorUid && (!scopes?.[supervisorUid] || supervisorUid === uid)) throw new Error('Reports-to UID must belong to another approved viewer account.');
-      const id = String(data.get('pointId')).trim(), eventId = String(data.get('eventId')).trim(), sectorId = String(data.get('sectorId')).trim();
-      if (![id, eventId, sectorId].every(value => /^[A-Za-z0-9_-]{1,80}$/.test(value))) throw new Error('Point, event and sector IDs must use letters, numbers, _ or -.');
-      const lat = Number(data.get('lat')), lng = Number(data.get('lng')), radiusM = Number(data.get('radiusM'));
-      if (!Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lng) || Math.abs(lng) > 180 || radiusM < 30 || radiusM > 2000) throw new Error('Enter valid coordinates and a radius from 30 to 2000 metres.');
-      const parseWindow = value => value ? Date.parse(String(value) + '+05:30') : 0;
-      const windowStart = parseWindow(data.get('windowStart')), windowEnd = parseWindow(data.get('windowEnd'));
-      if ((windowStart && !Number.isFinite(windowStart)) || (windowEnd && !Number.isFinite(windowEnd)) || (windowStart && windowEnd && windowEnd <= windowStart)) throw new Error('Enter a valid duty window in IST.');
-      const point = { id, name: String(data.get('pointName')).trim(), eventId, eventName: String(data.get('eventName')).trim(), sectorId,
-        reportingGroupId: String(data.get('reportingGroupId') || '').trim(), lat, lng, radiusM, windowStart, windowEnd,
-        instructions: String(data.get('instructions') || '').trim() };
-      if (!point.name || !point.eventName) throw new Error('Enter the point and event names.');
-      const old = await dbGet('assignments/' + uid) || {};
-      const pointChanged = JSON.stringify(old.dutyPoint || null) !== JSON.stringify(point);
-      if (pointChanged && (await dbGet('live/' + uid))?.duty === true) throw new Error('Ask this officer to stop duty before changing their point. Reporting supervisor can be updated during duty.');
-      const assignment = { ...old, id: pointChanged || !old.id ? crypto.randomUUID().replaceAll('-', '') : old.id,
-        designation: String(data.get('designation') || '').trim(), supervisorUid, dutyPoint: point };
-      if (role === 'route' && (!assignment.ps || !assignment.route)) throw new Error('Assign this officer to a route first.');
-      const updates = { ['assignments/' + uid]: assignment };
-      if (data.get('grantScope') === 'on') {
-        if (role !== 'si_monitor') throw new Error('Only viewer accounts can receive monitor scope.');
-        if (!scopes?.[uid]) throw new Error('Create the viewer login first.');
-        updates['siScopes/' + uid + '/events/' + eventId] = true;
-        updates['siScopes/' + uid + '/sectors/' + sectorId] = true;
-      }
-      await dbPatch('', updates);
-      modal.remove(); toast('Duty assignment saved. The officer must refresh My Duty before starting.');
-    } catch (error) { form.querySelector('.err').textContent = error.message; }
-    finally { button.disabled = false; }
-  };
-}
-$('#dutyPointsBtn').onclick = () => dutyPointModal().catch(showError);
 
 /* ---------- events ---------- */
 document.addEventListener('click', async e => {

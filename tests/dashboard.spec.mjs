@@ -809,34 +809,6 @@ test('administrator creates a mobile login and assigns its route without changin
   expect(JSON.stringify(writes)).not.toContain('password');
 });
 
-test('administrator assigns an event point with an IST window and reporting UID', async ({ page }) => {
-  const existing = { routeId: 'r1', ps: 'Example Rural Police Station', route: 'Route 12', officer: 'Constable A', mobile: '+919876543210' };
-  const writes = await controlRoom(page, { '/assignments.json': { 'officer-1': existing }, '/assignments/officer-1.json': existing,
-    '/siScopes.json': { 'si-1': { officer: 'SI One', rank: 'SI', mandal: 'North' } }, '/roles/officer-1.json': 'route', '/live/officer-1.json': null });
-  await page.getByRole('button', { name: 'Duty points' }).click();
-  const modal = page.getByRole('dialog', { name: 'Assign duty point' });
-  await modal.locator('[name=uid]').selectOption('officer-1');
-  await modal.locator('[name=designation]').fill('Constable');
-  await modal.locator('[name=supervisorUid]').fill('si-1');
-  await modal.locator('[name=eventId]').fill('cm-event');
-  await modal.locator('[name=eventName]').fill('CM programme');
-  await modal.locator('[name=sectorId]').fill('north');
-  await modal.locator('[name=pointId]').fill('gate-a');
-  await modal.locator('[name=pointName]').fill('North Gate');
-  await modal.locator('[name=lat]').fill('17.01');
-  await modal.locator('[name=lng]').fill('81.02');
-  await modal.locator('[name=radiusM]').fill('100');
-  await modal.locator('[name=windowStart]').fill('2026-11-24T09:00');
-  await modal.locator('[name=windowEnd]').fill('2026-11-24T18:00');
-  await modal.getByRole('button', { name: 'Save assignment' }).click();
-  await expect(modal).toBeHidden();
-  const saved = writes.find(w => w.body['assignments/officer-1'])?.body['assignments/officer-1'];
-  expect(saved).toMatchObject({ ...existing, designation: 'Constable', supervisorUid: 'si-1', dutyPoint: {
-    id: 'gate-a', name: 'North Gate', eventId: 'cm-event', sectorId: 'north', lat: 17.01, lng: 81.02, radiusM: 100,
-    windowStart: Date.parse('2026-11-24T09:00+05:30'), windowEnd: Date.parse('2026-11-24T18:00+05:30') } });
-  expect(saved.id).toMatch(/^[a-z0-9_-]{1,80}$/i);
-});
-
 test('editing a route preserves its assigned member', async ({ page }) => {
   const writes = await controlRoom(page, { '/config.json': {
     routes: { r1: { ps: 'Bommuru PS', route: 'Route 1', sd: 'North', officer: 'Officer A', mobile: '+919876543210', memberUid: 'officer-1' } },
