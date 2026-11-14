@@ -98,6 +98,7 @@ public final class MainActivity extends Activity {
   private boolean pendingAutoStart, dutyStartInProgress;
   private long lastSosTap;
   private File downloadedUpdate;
+  private static int attemptedUpdate; // one automatic attempt per version per app run
   private TextView assignmentCard;
   private Button navigateButton;
   private JSONObject attendanceCurrent = new JSONObject();
@@ -768,7 +769,10 @@ public final class MainActivity extends Activity {
         String apkUrl = v.getString("apkUrl");
         if (!UpdatePolicy.validDownloadUrl(apkUrl) || remoteCode <= 0) throw new java.io.IOException("Invalid update manifest");
         if (UpdatePolicy.isNewer(BuildConfig.VERSION_CODE, remoteCode)) {
-          ui.post(() -> { if (!isFinishing() && !isDestroyed()) downloadUpdate(apkUrl, v.optString("sha256")); });
+          if (userInitiated || attemptedUpdate != remoteCode) {
+            attemptedUpdate = remoteCode;
+            ui.post(() -> { if (!isFinishing() && !isDestroyed()) downloadUpdate(apkUrl, v.optString("sha256")); });
+          }
         } else if (userInitiated) note("TRACK is up to date (v" + BuildConfig.VERSION_NAME + ")");
       } catch (Exception e) { if (userInitiated) note("Could not check for updates. Check your internet connection and try again."); }
       finally { if (conn != null) conn.disconnect(); ui.post(() -> checkingUpdate = false); }

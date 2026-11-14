@@ -5,6 +5,6 @@
   "district": "East Godavari District Police",
   "apkUrl": "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACE/main/release/TRACK-Route-EastGodavari.apk",
   "releaseNotes": "Updates now download and install automatically. Assigned duty points, 10-second active-duty GPS target and offline trail upload.",
-  "sha256": "29df7c6fa23ab95b44befd1d3fae6cce600d13621ff7ef93d7262ab7eded98be",
+  "sha256": "45e78830bbf668e50ed1b5cd194d95725a74d01b915b8f0b91b9f7d7186b2104",
   "signingCertificateSha256": "e7310c8221c8ef469ce647aba0469b1f362ed97795ae625dd6750a34368864d7"
 }
