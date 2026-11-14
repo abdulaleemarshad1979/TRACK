@@ -96,6 +96,7 @@ public final class MainActivity extends Activity {
   private JSONObject routeCatalog = new JSONObject();
   private final java.util.ArrayList<JSONObject> routeChoices = new java.util.ArrayList<>();
   private boolean signingIn, checkingUpdate;
+  private boolean pendingAutoStart, dutyStartInProgress;
   private long lastSosTap;
   private File downloadedUpdate;
   private TextView assignmentCard;
@@ -178,7 +179,7 @@ public final class MainActivity extends Activity {
     setContentView(masterLayout);
 
     // Check if already signed in
-    boolean isSignedIn = session.get("signedIn").equals("1") && session.authenticated() && !session.get("ps").isEmpty();
+    boolean isSignedIn = session.get("signedIn").equals("1") && session.authenticated();
     if (!isSignedIn) { session.set("duty", "0"); stopService(new Intent(this, TrackService.class)); }
     showScreen(isSignedIn);
 
@@ -197,6 +198,7 @@ public final class MainActivity extends Activity {
       refreshAssignmentCard();
       switchPage(0);
     } else {
+      pendingAutoStart = false;
       mainAppView.setVisibility(View.GONE);
       signInView.setVisibility(View.VISIBLE);
     }
@@ -253,7 +255,7 @@ public final class MainActivity extends Activity {
     box.addView(desc);
 
     loginStatus = new TextView(this);
-    loginStatus.setText("Use the mobile number and password given by the control room. Your assigned route loads automatically.");
+    loginStatus.setText("Use the mobile number and password given by the control room. With an assigned route, signing in starts active-duty GPS sharing with the control room and your assigned supervisors, including while the screen is locked. Stop Duty ends sharing. Android may ask for precise location.");
     loginStatus.setTextSize(13);
     loginStatus.setTextColor(Color.rgb(52, 211, 153));
     loginStatus.setPadding(0, 0, 0, dp(14));
@@ -264,7 +266,7 @@ public final class MainActivity extends Activity {
     loginEmail.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
     loginPassword = field(box, "Password", "");
     loginPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-    button(box, "Sign in and load my route", this::authenticate);
+    button(box, "Sign in and share duty location", this::authenticate);
     loginAssignment = new LinearLayout(this);
     loginAssignment.setOrientation(LinearLayout.VERTICAL);
     box.addView(loginAssignment, new LinearLayout.LayoutParams(-1, -2));
@@ -338,6 +340,13 @@ public final class MainActivity extends Activity {
         JSONObject available = session.dbGet("config/routes");
         JSONObject sites = session.dbGet("config/stations");
         JSONObject assigned = "route".equals(session.get("role")) ? session.dbGet("assignments/" + session.uid()) : null;
+        if (assigned != null && assigned.length() == 0) {
+          session.set("assignment", ""); session.set("duty", "0"); session.set("signedIn", "1");
+          for (String key : new String[]{"sd", "ps", "route", "officer", "mobile", "el"}) session.set(key, "");
+          ui.post(() -> { routeCatalog = new JSONObject(); stationCatalog = new JSONObject(); loginPassword.setText("");
+            showScreen(true); note("No duty assigned yet. Ask the control room to assign your route and sign in again."); });
+          return;
+        }
         if (assigned != null && (assigned.optString("ps").isEmpty() || assigned.optString("route").isEmpty()))
           throw new SecurityException("No route assigned to this account. Contact the control room.");
         if (assigned != null && !assigned.optString("id").equals(new JSONObject(session.get("assignment").isEmpty() ? "{}" : session.get("assignment")).optString("id"))) {
@@ -351,21 +360,34 @@ public final class MainActivity extends Activity {
           if (assigned == null || (assigned.optString("ps").equals(r.optString("ps")) && assigned.optString("route").equals(r.optString("route")))) allowed.put(id, r);
         }
         if (allowed.length() == 0) throw new SecurityException("No matching route in the control-room list. Ask the control room to check your assignment.");
+        if (assigned != null) {
+          JSONObject selected = allowed.optJSONObject(assigned.optString("routeId"));
+          if (selected == null) selected = allowed.getJSONObject(allowed.keys().next());
+          String officer = assigned.optString("officer").trim();
+          if (officer.isEmpty()) throw new SecurityException("Your assignment has no officer name. Ask the control room to correct it.");
+          JSONObject device = deviceRecord(selected, officer, assigned.optString("mobile"));
+          saveOfficerSession(device);
+          session.set("stationCatalog", sites.toString());
+          ui.post(() -> {
+            routeCatalog = allowed; stationCatalog = sites;
+            loginPassword.setText("");
+            showScreen(true);
+            note("Signed in · Starting duty location");
+            pendingAutoStart = true;
+            resumePendingDuty();
+          });
+          return;
+        }
         ui.post(() -> {
           routeCatalog = allowed; stationCatalog = sites;
           session.set("stationCatalog", sites.toString());
           loginPassword.setText("");
-          if (assigned != null) {
-            for (int i = 1; i < EAST_GODAVARI_PS.length; i++) if (EAST_GODAVARI_PS[i].equals(assigned.optString("ps"))) loginPsSpinner.setSelection(i);
-            loginOfficer.setText(assigned.optString("officer")); loginMobile.setText(assigned.optString("mobile"));
-            loginSd.setText(assigned.optString("sd"));
-          }
-          loginPsSpinner.setEnabled(assigned == null);
-          loginOfficer.setEnabled(assigned == null); loginMobile.setEnabled(assigned == null); loginSd.setEnabled(assigned == null);
+          loginPsSpinner.setEnabled(true);
+          loginOfficer.setEnabled(true); loginMobile.setEnabled(true); loginSd.setEnabled(true);
           refreshRouteChoices();
-          loginRouteSpinner.setEnabled(assigned == null);
+          loginRouteSpinner.setEnabled(true);
           loginAssignment.setVisibility(View.VISIBLE);
-          loginStatus.setText(assigned == null ? "Signed in as administrator. Select a route, then continue." : "Assigned: " + assigned.optString("ps") + " · " + assigned.optString("route") + ". Continue to duty below.");
+          loginStatus.setText("Signed in as administrator. Select a route, then continue.");
         });
       } catch (Exception e) {
         session.clear();
@@ -424,16 +446,24 @@ public final class MainActivity extends Activity {
       try {
         // Do not let a previous account's queued writes block this account's location.
         // Older accounts retain their queue; flush only sends the current account’s records.
-        JSONObject d = new JSONObject().put("sd", selected.optString("sd")).put("ps", selected.optString("ps"))
-          .put("route", selected.optString("route")).put("officer", officer).put("mobile", mobile)
-          .put("force", "route").put("el", selected.optString("election")).put("v", BuildConfig.VERSION_NAME);
+        JSONObject d = deviceRecord(selected, officer, mobile);
         session.dbPut("devices/" + session.uid(), d);
-        for (String key : new String[]{"sd", "ps", "route", "officer", "mobile", "el"}) session.set(key, d.optString(key));
-        session.set("signedIn", "1"); session.set("approved", "1");
-        ui.post(() -> { note("Connected to the control room. Start duty to share location."); showScreen(true); });
+        saveOfficerSession(d);
+        ui.post(() -> { showScreen(true); note("Signed in · Starting duty location"); pendingAutoStart = true; resumePendingDuty(); });
       } catch (Exception e) { ui.post(() -> loginStatus.setText("Registration failed: " + e.getMessage())); }
       finally { ui.post(() -> signingIn = false); }
     });
+  }
+
+  private JSONObject deviceRecord(JSONObject route, String officer, String mobile) throws Exception {
+    return new JSONObject().put("sd", route.optString("sd")).put("ps", route.optString("ps"))
+      .put("route", route.optString("route")).put("officer", officer).put("mobile", mobile)
+      .put("force", "route").put("el", route.optString("election")).put("v", BuildConfig.VERSION_NAME);
+  }
+
+  private void saveOfficerSession(JSONObject device) {
+    for (String key : new String[]{"sd", "ps", "route", "officer", "mobile", "el"}) session.set(key, device.optString(key));
+    session.set("signedIn", "1"); session.set("approved", "1");
   }
 
   // ==========================================
@@ -588,6 +618,8 @@ public final class MainActivity extends Activity {
       showScreen(false);
     });
     button(box, "🚀 Check for App Updates", () -> checkForUpdates(true));
+    if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+      button(box, "Allow tracking notifications (optional)", this::explainNotifications);
 
     return scroll;
   }
@@ -824,6 +856,11 @@ public final class MainActivity extends Activity {
 
   private void refreshAssignmentCard() {
     if (assignmentCard == null) return;
+    if (session.get("assignment").isEmpty()) {
+      assignmentCard.setText("No duty assigned yet. Ask the control room for your route or point assignment.");
+      if (navigateButton != null) navigateButton.setEnabled(false);
+      return;
+    }
     JSONObject point = dutyPoint();
     String work = "Officer: " + session.get("officer") + "\nStation: " + session.get("ps") + "\nRoute: " + session.get("route");
     if (point == null) work = "No duty point allotted. Your route duty remains available. Contact the control room if a point was expected.\n" + work;
@@ -870,13 +907,15 @@ public final class MainActivity extends Activity {
   private void refreshDuty() {
     boolean active = session.get("duty").equals("1");
     if (duty != null) {
-      duty.setText(active ? (TrackService.running ? "STOP DUTY" : "RESUME DUTY") : "START DUTY");
+      duty.setText(dutyStartInProgress ? "STARTING GPS…" : active ? (TrackService.running ? "STOP DUTY" : "RESUME DUTY") : "START DUTY");
+      duty.setEnabled(!dutyStartInProgress);
       duty.setBackground(shape(active ? Color.rgb(239, 68, 68) : Color.rgb(34, 197, 94), Color.rgb(255, 255, 255)));
       duty.setTextColor(Color.WHITE);
     }
   }
 
   private void toggleDuty() {
+    if (dutyStartInProgress) return;
     if (session.get("duty").equals("1") && TrackService.running) {
       KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
       if (km != null && km.isDeviceSecure()) {
@@ -892,9 +931,12 @@ public final class MainActivity extends Activity {
       return;
     }
 
-    if (!session.authenticated() || session.get("ps").isEmpty() || session.get("assignment").isEmpty()) {
-      note("Police Station not set. Sign in first.");
-      showScreen(false);
+    if (!session.authenticated()) {
+      note("Sign in first."); showScreen(false);
+      return;
+    }
+    if (session.get("ps").isEmpty() || session.get("assignment").isEmpty()) {
+      note("No duty assigned yet. Ask the control room to assign your route.");
       return;
     }
 
@@ -905,24 +947,36 @@ public final class MainActivity extends Activity {
   }
 
   private void prepareDuty(boolean resume) {
+    if (dutyStartInProgress) return;
     if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-      askPermissions(); note("Grant precise location, then tap Start Duty again. If only approximate is allowed, change it in app settings."); return;
+      pendingAutoStart = true;
+      askPermissions(); note("Grant precise location to start duty sharing. If only approximate is allowed, change it in app settings."); return;
     }
 
     android.location.LocationManager lm = (android.location.LocationManager) getSystemService(LOCATION_SERVICE);
     if (lm == null || !lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)) {
+      pendingAutoStart = true;
       note("Turn on GPS before starting duty");
       startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
       return;
     }
 
+    final String requestedUid = session.uid();
+    final String originalAssignment = session.get("assignment");
+    dutyStartInProgress = true;
+    refreshDuty();
     work(() -> {
       try {
-        JSONObject assigned = session.dbGet("assignments/" + session.uid());
+        JSONObject assigned = session.dbGet("assignments/" + requestedUid);
         if (assigned.length() == 0 || !assigned.optString("ps").equals(session.get("ps")) || !assigned.optString("route").equals(session.get("route")))
           throw new SecurityException("Your duty assignment changed. Sign in again or contact the control room.");
-        session.set("assignment", assigned.toString());
+        if (resume && !assigned.optString("id").equals(new JSONObject(originalAssignment).optString("id")))
+          throw new SecurityException("Your duty assignment changed. Sign in again before resuming.");
         ui.post(() -> {
+          dutyStartInProgress = false;
+          if (!requestedUid.equals(session.uid()) || !session.authenticated() || !"1".equals(session.get("signedIn"))) { refreshDuty(); return; }
+          pendingAutoStart = false;
+          session.set("assignment", assigned.toString());
           if (!resume || session.get("sessionId").isEmpty()) {
             session.set("sessionId", UUID.randomUUID().toString());
             session.set("sessionStartedAt", String.valueOf(System.currentTimeMillis()));
@@ -931,14 +985,32 @@ public final class MainActivity extends Activity {
           } else if (session.get("sessionStartedAt").isEmpty()) session.set("sessionStartedAt", String.valueOf(System.currentTimeMillis()));
           session.set("duty", "1");
           try { startForegroundService(new Intent(this, TrackService.class)); }
-          catch (Exception e) { session.set("duty", "0"); note("Tracking could not start: " + e.getMessage()); return; }
-          if (!resume) queueEvent("start"); note("Duty active · Tracking started"); refreshAssignmentCard(); refreshDuty(); explainNotifications();
+          catch (Exception e) { session.set("duty", "0"); refreshDuty(); note("Tracking could not start: " + e.getMessage()); return; }
+          if (!resume) queueEvent("start"); note("Duty active · Tracking started"); refreshAssignmentCard(); refreshDuty();
         });
-      } catch (Exception e) { ui.post(() -> note("Cannot start duty: " + e.getMessage())); }
+      } catch (Exception e) { ui.post(() -> { dutyStartInProgress = false; pendingAutoStart = false; refreshDuty(); note("Cannot start duty: " + e.getMessage()); }); }
     });
   }
 
+  private void resumePendingDuty() {
+    if (!pendingAutoStart || dutyStartInProgress || !session.authenticated() || !"1".equals(session.get("signedIn"))) return;
+    pendingAutoStart = false;
+    prepareDuty("1".equals(session.get("duty")));
+  }
+
+  @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode != PERMISSION || !pendingAutoStart) return;
+    if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) resumePendingDuty();
+    else if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+      note("Approximate location cannot confirm your duty point. Allow precise location in app settings; sharing starts when you return.");
+      startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        android.net.Uri.parse("package:" + getPackageName())));
+    } else { pendingAutoStart = false; note("Location access was denied. Use Start Duty after enabling precise location in app settings."); }
+  }
+
   private void stopDuty() {
+    pendingAutoStart = false;
     session.set("lastDutySessionId", session.get("sessionId"));
     session.set("duty", "0");
     stopService(new Intent(this, TrackService.class));
@@ -1204,6 +1276,10 @@ public final class MainActivity extends Activity {
   @Override protected void onResume() {
     super.onResume();
     if (downloadedUpdate != null && Build.VERSION.SDK_INT >= 26 && getPackageManager().canRequestPackageInstalls()) openDownloadedUpdate();
+    if (pendingAutoStart && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+      android.location.LocationManager lm = (android.location.LocationManager) getSystemService(LOCATION_SERVICE);
+      if (lm != null && lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)) resumePendingDuty();
+    }
     if (message != null) {
       message.setText(session.get("lastMsg").isEmpty() ? "No new control room messages." : session.get("lastMsg"));
     }

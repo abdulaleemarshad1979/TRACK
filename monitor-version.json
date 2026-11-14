@@ -1,7 +1,8 @@
 {
-  "versionCode": 3,
-  "versionName": "1.1.1",
+  "versionCode": 4,
+  "versionName": "1.2.0",
   "apkUrl": "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACK/main/release/Trace-Monitor.apk",
-  "sha256": "1f86b57321c8fe2dd57d36b79d5072e9237678160009d04b81a9383de41241b0",
-  "releaseNotes": "Shows Nannayya University, Deepthi EM High School, and SVD Degree College as prominent main centers on the control room map."
+  "sha256": "7a7842af9fb53653d03e2b5a04b2cd57cdc01a664f533ac9f7c96d514d67e709",
+  "signingCertificateSha256": "24bb04f4953b757e589e5590b57ad3ce6fc79665c0191efe4f0042eeba90547c",
+  "releaseNotes": "TRACK duty rosters, assigned-point presence and recent GPS trails."
 }

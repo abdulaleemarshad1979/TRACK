@@ -20,14 +20,18 @@ jobs:
           distribution: temurin
           cache: gradle
       - name: Build and check Android code
-        run: ./gradlew :android-route:testDebugUnitTest :android-route:assembleDebug :android-route:lintDebug
+        run: ./gradlew :android-route:testDebugUnitTest :android-route:assembleDebug :android-route:lintDebug :android-monitor:assembleDebug
       - name: Verify published APK version, checksum and signing certificate
-        run: python3 tools/verify-release.py
+        run: |
+          python3 tools/verify-release.py
+          python3 tools/verify-monitor-release.py
       # The runner's newly generated debug key cannot upgrade an installed phone.
       # Distribute the verified, consistently signed release checked into the repo.
       - uses: actions/upload-artifact@v4
         with:
-          name: TRACK-Route-EastGodavari-APK
+          name: TRACK-Android-APKs
           path: |
             release/TRACK-Route-EastGodavari.apk
             version.json
+            release/Trace-Monitor.apk
+            monitor-version.json

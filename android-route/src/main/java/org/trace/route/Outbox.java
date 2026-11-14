@@ -11,15 +11,20 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 final class Outbox extends SQLiteOpenHelper {
-  private final Object flushGate = new Object();
+  private static final Object FLUSH_GATE = new Object();
   private final Context context;
   Outbox(Context c) { super(c, "trace-outbox.db", null, 1); context = c.getApplicationContext(); }
   @Override public void onCreate(SQLiteDatabase db) { db.execSQL("CREATE TABLE pending (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, json TEXT NOT NULL)"); }
   @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) { }
   synchronized void add(String path, Object body) {
-    if (path.startsWith("live/")) getWritableDatabase().delete("pending", "path=?", new String[]{path});
+    SQLiteDatabase db = getWritableDatabase();
     android.content.ContentValues v = new android.content.ContentValues(); v.put("path", path); v.put("json", body.toString());
-    getWritableDatabase().insertOrThrow("pending", null, v);
+    db.beginTransaction();
+    try {
+      if (path.startsWith("live/")) db.delete("pending", "path=?", new String[]{path});
+      db.insertOrThrow("pending", null, v);
+      db.setTransactionSuccessful();
+    } finally { db.endTransaction(); }
     if (!"1".equals(new Session(context).get("duty"))) scheduleRetry();
   }
   private void scheduleRetry() {
@@ -38,13 +43,22 @@ final class Outbox extends SQLiteOpenHelper {
   }
   void flush(Session session) throws Exception { flush(session, 6); }
   void flush(Session session, int maxWrites) throws Exception {
-    synchronized (flushGate) {
+    synchronized (FLUSH_GATE) {
       int sent = 0;
       int target = Math.min(maxWrites, size());
       while (sent < target) {
         ArrayList<Pending> batch = pendingFor(session, Math.min(50, target - sent));
         if (batch.isEmpty()) break;
         for (Pending item : batch) {
+          if (item.path.startsWith("live/")) {
+            JSONObject live = new JSONObject(item.json);
+            if (OutboxPolicy.discardLive(live.optBoolean("duty"), live.optString("sessionId"),
+                "1".equals(session.get("duty")), session.get("sessionId"))) {
+              getWritableDatabase().delete("pending", "id=?", new String[]{String.valueOf(item.id)});
+              sent++;
+              continue;
+            }
+          }
           try { session.dbPut(item.path, item.json.startsWith("[") ? new org.json.JSONArray(item.json) : new JSONObject(item.json)); }
           catch (Exception writeError) {
             if (!item.path.startsWith("events/") || !sameEvent(session.dbGet(item.path), new JSONObject(item.json))) throw writeError;

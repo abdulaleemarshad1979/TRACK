@@ -22,7 +22,7 @@ The `si_monitor` role and `siScopes/{uid}/routes` and `stations` are enforced in
 1. Sign into the monitor as the control-room administrator, then open **Settings → Routes → Assign member** beside the chosen route.
 2. Enter officer name/rank, a 10-digit Indian mobile number (or +91 format), and a password of at least 8 characters. For an existing mobile login, use its current password; tick **Change this person's password** to replace it.
 3. For a route marked **Review coverage**, inspect the displayed polling locations and confirm the coverage before assigning it.
-4. Give that member the mobile number/password and the 2.2.3 APK. The member taps **Sign in and load my route**; only the assigned route is shown, with officer details filled automatically. Tap **Continue to duty**, grant precise location, turn GPS on and tap **START DUTY**.
+4. Give that member the mobile number/password and the released Route APK. In the 2.3.0 update candidate, the member taps **Sign in and share duty location** once; My Duty opens with only their assigned work. If Android asks, grant precise location and turn on GPS. Sharing starts automatically when those requirements are met. **Stop Duty** ends sharing. The published 2.2.3 APK still has its earlier Continue to duty and START DUTY steps until the update is released.
 5. One account identifies one phone. An account cannot be moved from another route or modified while on duty through this form. Administrator/monitor accounts are never demoted to route accounts.
 
 ### Changing passwords
@@ -71,8 +71,8 @@ The current `officer-8eb52` Firebase project has billing disabled. [Firebase's R
 `version.json` is the single source for Android's `versionCode` and `versionName`. An update prompt appears only when the published version code is strictly greater than the installed one. Automatic checks are quiet on failure or equal/older releases. A manual failed check reports that it could not check; it does not claim the app is current. Choosing Later suppresses repeat automatic prompts for that version; manual checks still show it.
 
 1. Increase `versionCode` and set `versionName`/release notes only for a release.
-2. Build with the existing signing keystore: `./gradlew :android-route:testDebugUnitTest :android-route:assembleDebug :android-route:lintDebug`.
-3. Copy the successful APK to `release/TRACK-Route-EastGodavari.apk`; update `sha256` in `version.json` to the file's SHA-256 digest.
+2. Build with the existing Route signing certificate: `./gradlew :android-route:testDebugUnitTest :android-route:lintDebug :android-route:assembleRelease`. The release variant is non-debuggable and uses the same certificate as installed copies; verify the fingerprint before distribution.
+3. Copy `android-route/build/outputs/apk/release/android-route-release.apk` to `release/TRACK-Route-EastGodavari.apk`; update `sha256` in `version.json` to the file's SHA-256 digest.
 4. Run `ANDROID_HOME=/path/to/sdk python3 tools/verify-release.py`.
 5. Publish the APK and matching manifest in the same Git commit. Preserve the existing signing certificate so Android can upgrade installed copies. See [Android app signing](https://developer.android.com/studio/publish/app-signing.html).
 

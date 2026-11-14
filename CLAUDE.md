@@ -7,10 +7,11 @@ Finish and verify the assigned duty point, GPS, attendance, and scoped Monitor w
 ## State of play
 
 - Git baseline: `origin/main` at `942bbe27548faddb90a40e95a8c7283cefe9e03e` when work began. Branch: `codex/duty-presence-gps`.
-- Route now has an assigned My Duty screen, maps navigation, contextual permissions, 10-second active-duty GPS target, bounded offline queue, and visible Resume Duty. The published Route 2.2.3 remains a 30-second build; no release artifact was changed.
+- Route now has one-step sign-in that opens My Duty and starts duty location when precise permission and GPS are available, maps navigation, a 10-second GPS target, bounded offline batches, and visible Resume Duty. Signed Route 2.3.0 and Monitor 1.2.0 update candidates are on this branch; the published `main` manifests still advertise Route 2.2.3 and Monitor 1.1.1.
 - Firebase Functions derive attendance from authenticated track records and immutable duty-session context. Rules enforce own-record and reporting-chain reads and block client attendance writes. The TRACK control room and scoped viewer show roster, point, presence, last fix, and trail.
 - Verification completed: `npm test` (109 passed), `npm run test:rules` (4 passed), `npm test --prefix functions` (4 passed), Database+Functions emulator synthetic entry/departure/return and reassignment trip passed, `npm run build`, Route unit/lint/debug assemble, and Monitor debug assemble. `git diff --check` passed. Android SDK for local builds is at `/tmp/track-android-sdk`; this path is temporary.
 - No real phone or approved staging account was available. The scenarios, measurements, and release gate are in `docs/duty-presence.md`. Debug APKs are under `android-route/build/outputs/apk/debug/` and `android-monitor/build/outputs/apk/debug/`, which Git ignores.
+- The active Firebase project reports billing disabled, so the new Functions cannot be deployed until the owner enables the Blaze plan. The current app updater checks GitHub `main`, downloads a SHA-256 verified APK, then asks the user to approve Android's installer. It cannot silently install or send GPS to Firebase without any network.
 - `docs/PROJECT-MEMORY.md` was already untracked before this work. Leave it untouched and out of commits.
 
 ## Open decisions and required work

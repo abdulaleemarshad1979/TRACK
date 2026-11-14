@@ -12,6 +12,7 @@ android {
         buildConfigField 'String', 'STAGING_DATABASE_URL', groovy.json.JsonOutput.toJson(staging.databaseURL)
     }
     buildFeatures { buildConfig true }
+    buildTypes { release { signingConfig signingConfigs.debug } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
 dependencies {

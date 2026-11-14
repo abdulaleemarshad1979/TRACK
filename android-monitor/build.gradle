@@ -4,6 +4,7 @@ def monitorSigningFile = file('../.local-data/monitor-signing.properties')
 def monitorSigning = new Properties()
 if (monitorSigningFile.exists()) monitorSigningFile.withInputStream { monitorSigning.load(it) }
 def firebaseConfig = new groovy.json.JsonSlurper().parse(file('../config/staging.json'))
+def monitorVersion = new groovy.json.JsonSlurper().parse(file('../monitor-version.json'))
 
 android {
     namespace 'org.trace.monitor'
@@ -12,8 +13,8 @@ android {
         applicationId 'org.trace.monitor'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '1.1.1'
+        versionCode monitorVersion.versionCode
+        versionName monitorVersion.versionName
         buildConfigField 'String', 'FIREBASE_API_KEY', groovy.json.JsonOutput.toJson(firebaseConfig.apiKey)
         buildConfigField 'String', 'FIREBASE_DATABASE_URL', groovy.json.JsonOutput.toJson(firebaseConfig.databaseURL.replaceAll('/+$', ''))
     }
