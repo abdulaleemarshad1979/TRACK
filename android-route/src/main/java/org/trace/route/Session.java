@@ -45,7 +45,8 @@ final class Session {
     set("role", role);
     set("login", login.trim());
   }
-  void clear() { prefs.edit().remove("refresh").remove("uid").remove("email").remove("approved").remove("role").remove("signedIn").apply(); idToken = ""; }
+  void clear() { prefs.edit().remove("refresh").remove("uid").remove("email").remove("approved").remove("role").remove("signedIn")
+    .remove("assignment").remove("sessionId").remove("sessionStartedAt").remove("lastDutySessionId").putString("duty", "0").commit(); idToken = ""; }
   synchronized String token() throws Exception {
     if (!idToken.isEmpty() && System.currentTimeMillis() < expiry - 120000) return idToken;
     if (get("refresh").isEmpty()) throw new SecurityException("Sign in with your assigned mobile number and password first.");

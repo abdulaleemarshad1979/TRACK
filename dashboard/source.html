@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TRACE — Tracking Routes, Alerting &amp; Coordinating Emergencies</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TRACK — Control Room</title>
 <style>/* required styles */
 
 .leaflet-pane,
@@ -1054,7 +1054,7 @@ main.body{position:relative}
 .phtoast{display:flex;align-items:center;gap:10px;bottom:70px}
 .phtoast .btn{background:#fff;color:var(--navy)}
 .phtoast .phx{border:0;background:none;color:#fff;font-size:18px;cursor:pointer;padding:0 2px}
-/* TRACE abbreviation in small letters after the heading */
+/* TRACK abbreviation in small letters after the heading */
 .abbr{font-size:11.5px;font-weight:500;letter-spacing:0;opacity:.85;vertical-align:middle}
 .login h1 .abbr{display:block;font-size:12.5px;margin:2px 0 4px}
 @media (max-width:1450px){header.top .brand .abbr{display:block;font-size:10.5px;margin-top:1px}}
@@ -1263,8 +1263,8 @@ body.wall .rd .work{grid-template-columns:minmax(0,1fr) 40vw;margin:0 10px 10px}
 </style></head><body>
 <div id="login" class="login" hidden>
   <div class="card">
-    <div class="lhead"><div class="trace-mark">T</div><div><div class="org">TRACE CONTROL ROOM</div>
-    <h1>TRACE <small class="abbr">(Tracking Routes, Alerting &amp; Coordinating Emergencies)</small><br>Election Control Room</h1>
+    <div class="lhead"><div class="trace-mark">T</div><div><div class="org">TRACK CONTROL ROOM</div>
+    <h1>TRACK<br>Election Control Room</h1>
     <div class="note">Route mobiles and polling locations</div></div></div>
     <form id="projForm" hidden>
       <div class="banner warn"><b>First time on this computer.</b> Paste the <b>firebaseConfig</b> text from the Firebase console (Project settings → Your apps). It tells the dashboard where the route mobiles send their locations.</div>
@@ -1277,7 +1277,7 @@ body.wall .rd .work{grid-template-columns:minmax(0,1fr) 40vw;margin:0 10px 10px}
       <p class="login-role-note" id="loginRoleNote">Read-only access to your assigned mandal routes.</p>
       <div id="viewerFields">
         <label class="f">Mobile number<input type="tel" id="lMobile" inputmode="tel" autocomplete="username" placeholder="10-digit mobile number" required></label>
-        <label class="f">Rank<select id="lRank" required><option value="">Choose rank</option><option>Incharge</option><option>Striking Force</option><option>Sub-Striking Force</option><option>DSP</option></select></label>
+        <label class="f">Rank<select id="lRank" required><option value="">Choose rank</option><option>SI</option><option>CI</option><option>Sector Supervisor</option><option>Incharge</option><option>Striking Force</option><option>Sub-Striking Force</option><option>DSP</option></select></label>
       </div>
       <div id="adminFields" hidden><label class="f">Administrator email<input type="email" id="lEmail" autocomplete="username" disabled></label></div>
       <label class="f">Password<input type="password" id="lPw" autocomplete="current-password" required></label>
@@ -1287,7 +1287,7 @@ body.wall .rd .work{grid-template-columns:minmax(0,1fr) 40vw;margin:0 10px 10px}
       <button class="btn primary" id="loginSubmit" type="submit">Sign in to Viewer Portal</button>
       <button class="btn ghost small" type="button" id="changeProj">Use a different Firebase project</button>
     </form>
-    <div class="restricted"><b>🔒 RESTRICTED — FOR OFFICIAL USE OF TRACE CONTROL ROOM ONLY</b>
+    <div class="restricted"><b>🔒 RESTRICTED — FOR OFFICIAL USE OF TRACK CONTROL ROOM ONLY</b>
       This system shows the live location of police vehicles and polling-day information. Access is only for officers authorised by the Superintendent of Police. Do not share the login, the app, screenshots or any information from it with outsiders, the media or on social media / WhatsApp groups. Misuse will attract disciplinary and legal action.
       <button class="btn ghost small" type="button" data-help>How to use</button></div>
   </div>
@@ -1295,7 +1295,7 @@ body.wall .rd .work{grid-template-columns:minmax(0,1fr) 40vw;margin:0 10px 10px}
 
 <section id="viewerApp" class="viewer-app" hidden>
   <header class="viewer-head"><div><strong>TRACK · Viewer Portal</strong><small>East Godavari District Police · Assigned mandal</small></div><button id="viewerLogout" type="button">Sign out</button></header>
-  <main class="viewer-main"><div class="viewer-top"><div><h1 id="viewerMandal">Assigned mandal</h1><p id="viewerOfficer"></p></div><p id="viewerUpdated" role="status">Loading…</p></div><div class="viewer-share"><span id="viewerShareStatus" role="status">Location sharing will start after sign-in.</span><button id="viewerShare" type="button">Stop sharing location</button></div><p id="viewerAlert" class="viewer-alert" role="alert" hidden></p><div id="viewerStats" class="viewer-stats"></div><div class="viewer-grid"><section class="viewer-panel"><h2>Assigned routes and phones</h2><div class="viewer-table-wrap"><table><thead><tr><th>Route</th><th>Officer</th><th>Phone status</th><th>Last update</th></tr></thead><tbody id="viewerRoutes"></tbody></table></div></section><section class="viewer-panel"><div class="viewer-map-head"><h2>Live location and polling booths</h2><button id="viewerFullMap" class="viewer-full-btn" type="button" aria-pressed="false">⛶ Full map</button></div><div id="viewerMap" aria-label="Map of assigned route phones and polling booths"></div><p id="viewerMapNote" class="note"></p></section></div><p class="viewer-foot">Restricted to your assigned routes and polling booths. Live data refreshes every 10 seconds. Your location is shared with the control room while sharing is on. On Android, sharing continues with the screen locked or the app removed from Recents until you stop it here or from the persistent notification.</p></main>
+  <main class="viewer-main"><div class="viewer-top"><div><h1 id="viewerMandal">Assigned mandal</h1><p id="viewerOfficer"></p></div><p id="viewerUpdated" role="status">Loading…</p></div><div class="viewer-share"><span id="viewerShareStatus" role="status">Location sharing will start after sign-in.</span><button id="viewerShare" type="button">Stop sharing location</button></div><p id="viewerAlert" class="viewer-alert" role="alert" hidden></p><div id="viewerStats" class="viewer-stats"></div><section class="viewer-panel" id="viewerRosterPanel" hidden><h2>Officers reporting to you</h2><div id="viewerRoster"></div></section><div class="viewer-grid"><section class="viewer-panel"><h2>Assigned routes and phones</h2><div class="viewer-table-wrap"><table><thead><tr><th>Route</th><th>Officer</th><th>Phone status</th><th>Last update</th></tr></thead><tbody id="viewerRoutes"></tbody></table></div></section><section class="viewer-panel"><div class="viewer-map-head"><h2>Live location and polling booths</h2><button id="viewerFullMap" class="viewer-full-btn" type="button" aria-pressed="false">⛶ Full map</button></div><div id="viewerMap" aria-label="Map of assigned route phones and polling booths"></div><p id="viewerMapNote" class="note"></p></section></div><p class="viewer-foot">Restricted to your approved routes and reporting scope. Positions are device-location evidence. Live data refreshes every 10 seconds. Your separately opted-in viewer location is shared with the control room while sharing is on.</p></main>
 </section>
 
 <div id="app" class="app rd" hidden>
@@ -1303,12 +1303,13 @@ body.wall .rd .work{grid-template-columns:minmax(0,1fr) 40vw;margin:0 10px 10px}
     <button class="ibtn hamb" id="sideBtn" type="button" title="Show or hide the menu labels" aria-label="Menu">☰</button>
     <div class="ttl">
       <div class="trace-mark">T</div>
-      <div class="brand"><span>TRACE CONTROL ROOM</span><b>TRACE</b><small class="abbr">(Tracking Routes, Alerting &amp; Coordinating Emergencies)</small></div>
+      <div class="brand"><span>TRACK CONTROL ROOM</span><b>TRACK</b></div>
     </div>
     <div class="ecr"><b>Election Control Room</b><em id="elecName">Route mobiles · polling locations</em></div>
     <div class="hright">
       <span class="conn" id="conn">Live</span>
       <span class="clock" id="clock"></span>
+      <button class="ibtn" id="dutyPointsBtn" type="button" hidden>Duty points</button>
       <button class="ibtn vbtn3" id="voiceBtn" type="button" title="Record and send a voice message to the route mobiles">🎤 Voice</button>
       <button class="ibtn bell" id="bellBtn" type="button" title="Alerts">🔔<b id="bellN" hidden></b></button>
       <button class="ibtn" id="panelBtn" type="button" title="Hide the side panel beside the map">Hide panel ◂</button>
@@ -4724,11 +4725,13 @@ function offRoute(u) {
 const norm = s => String(s || '').toLowerCase().replace(/route|no\.?|\s|-/g, '');
 function status(u) {
   const L = LIVE[u], s = S(), now = Date.now();
-  if (!L || !L.up || L.duty === false) return { k: 'none', txt: 'Not started', c: C.none };
-  const age = now - L.up;
-  if (age > s.nosig * MIN) return { k: 'nosig', txt: `No signal ${Math.floor(age / MIN)} min`, c: C.nosig };
-  if (L.gps === false) return { k: 'gpsoff', txt: 'GPS switched off', c: C.gpsoff };
-  if (!L.t || now - L.t > 90000) return { k: 'weak', txt: 'GPS weak', c: C.weak };
+  if (!L || !L.up) return { k: 'none', txt: 'Not started', c: C.none };
+  if (L.duty === false) return { k: 'none', txt: 'Off duty', c: C.none };
+  const age = now - (L.receivedAt || L.up);
+  if (age > s.nosig * MIN) return { k: 'nosig', txt: `No recent contact · ${Math.floor(age / MIN)} min`, c: C.nosig };
+  if (L.gps === false) return { k: 'gpsoff', txt: 'GPS unavailable', c: C.gpsoff };
+  if (!L.t) return { k: 'weak', txt: 'Waiting for GPS', c: C.weak };
+  if (now - L.t > 90000) return { k: 'weak', txt: 'Location stale', c: C.weak };
   const sm = stoppedMins(u);
   if (sm >= s.stop) return { k: 'stop', txt: `Stopped ${sm} min`, c: C.stop };
   if ((+L.spd || 0) < 2) return { k: 'stop', txt: 'Stopped', c: C.stop };
@@ -4770,9 +4773,11 @@ const devIds = () => perTask(`devIds|${UI.fSd}|${UI.fPs}|${UI.fForce}`, () => {
 }).slice();
 
 /* ---------- start ---------- */
-let LOGIN_MODE = 'viewer', VIEWER_SCOPE = null, VIEWER_ROUTES = [], VIEWER_STATIONS = [], VIEWER_MAP = null, VIEWER_MARKERS = {}, VIEWER_BOOTH_LAYER = null, VIEWER_TIMER = null, VIEWER_RANK = '', VIEWER_SCOPE_KEY = '', VIEWER_SCOPE_AT = 0, VIEWER_BOOTH_KEY = '';
-const VIEWER_DETAIL = {}, VIEWER_SCOPE_MS = 5 * 60000, VIEWER_DEVICE_MS = 5 * 60000;
-const VIEWER_RANKS = ['Incharge', 'Striking Force', 'Sub-Striking Force', 'DSP'];
+let LOGIN_MODE = 'viewer', VIEWER_SCOPE = null, VIEWER_ROUTES = [], VIEWER_STATIONS = [], VIEWER_REPORTS = [], VIEWER_MAP = null, VIEWER_MARKERS = {}, VIEWER_BOOTH_LAYER = null, VIEWER_TIMER = null, VIEWER_RANK = '', VIEWER_SCOPE_KEY = '', VIEWER_SCOPE_AT = 0, VIEWER_BOOTH_KEY = '';
+const VIEWER_DETAIL = {}, VIEWER_SCOPE_MS = 30000, VIEWER_DEVICE_MS = 5 * 60000;
+const VIEWER_TRAILS = {};
+let VIEWER_TRAIL_LAYER = null, VIEWER_TRAIL_UID = '';
+const VIEWER_RANKS = ['SI', 'CI', 'Sector Supervisor', 'Incharge', 'Striking Force', 'Sub-Striking Force', 'DSP'];
 let VIEWER_SHARING = false, VIEWER_WATCH = null, VIEWER_PROBE = null, VIEWER_LAST_SENT = 0;
 function viewerShareUi(message) {
   $('#viewerShareStatus').textContent = message;
@@ -4835,24 +4840,36 @@ function viewerTime(value) { return value ? new Date(value).toLocaleString('en-I
 function viewerHasLocation(live) { return live?.lat != null && live?.lng != null && Number.isFinite(+live.lat) && Number.isFinite(+live.lng) && Math.abs(+live.lat) <= 90 && Math.abs(+live.lng) <= 180; }
 function viewerStatus(live, sos) {
   if (sos) return { label: 'SOS', css: 'sos' };
-  if (!live?.up || live.duty === false) return { label: 'Not started', css: '' };
-  if (Date.now() - live.up > 300000) return { label: 'No signal', css: 'stale' };
-  if (live.gps === false) return { label: 'GPS off', css: 'stale' };
+  if (!live?.up) return { label: 'Not started', css: '' };
+  if (live.duty === false) return { label: 'Off duty', css: '' };
+  if (Date.now() - (live.receivedAt || live.up) > 300000) return { label: 'No recent contact', css: 'stale' };
+  if (live.gps === false) return { label: 'GPS unavailable', css: 'stale' };
   if (!viewerHasLocation(live)) return { label: 'Waiting for GPS fix', css: 'stale' };
-  if (live.t && Date.now() - Number(live.t) > 90000) return { label: 'GPS fix stale', css: 'stale' };
+  if (live.t && Date.now() - Number(live.t) > 90000) return { label: 'Location stale', css: 'stale' };
   return { label: +live.spd > 3 ? 'Moving' : 'Live', css: 'live' };
 }
 async function loadViewerScope() {
   VIEWER_SCOPE_AT = Date.now();
   const scope = await dbGet('siScopes/' + AU.uid);
-  if (!scope?.mandal || !scope.routes || !Object.values(scope.routes).some(Boolean)) throw new Error('No mandal routes have been assigned to this viewer account. Ask the control room to assign routes.');
+  if (!scope?.mandal) throw new Error('No reporting scope has been assigned to this viewer account.');
   const savedRank = VIEWER_RANKS.includes(scope.rank) ? scope.rank : '';
   if (savedRank && VIEWER_RANK && VIEWER_RANK !== savedRank) throw new Error('The selected rank does not match this viewer account. Choose the rank issued by the command control room.');
   const rank = savedRank || VIEWER_RANK;
   VIEWER_SCOPE = scope;
-  const ids = Object.keys(scope.routes).filter(id => scope.routes[id] === true);
+  const ids = Object.keys(scope.routes || {}).filter(id => scope.routes[id] === true);
   const results = await Promise.allSettled(ids.map(id => dbGet('config/routes/' + encodeURIComponent(id))));
   VIEWER_ROUTES = ids.flatMap((id, index) => results[index].status === 'fulfilled' && results[index].value && typeof results[index].value === 'object' ? [{ id, ...results[index].value }] : []);
+  const [roster, own] = await Promise.all([dbGet('reportingRoster/' + AU.uid), dbGet('assignments/' + AU.uid)]);
+  const reportIds = [...new Set([...Object.keys(roster || {}).filter(uid => roster[uid] === true), ...(own?.dutyPoint ? [AU.uid] : [])])];
+  const assigned = await Promise.allSettled(reportIds.map(uid => dbGet('assignments/' + encodeURIComponent(uid))));
+  VIEWER_REPORTS = reportIds.flatMap((uid, i) => assigned[i].status === 'fulfilled' && assigned[i].value?.dutyPoint
+    ? [{ uid, assignment: assigned[i].value }] : []);
+  const reportSet = new Set(VIEWER_REPORTS.map(x => x.uid));
+  Object.keys(VIEWER_TRAILS).forEach(uid => { if (!reportSet.has(uid)) delete VIEWER_TRAILS[uid]; });
+  if (VIEWER_TRAIL_LAYER && !reportSet.has(VIEWER_TRAIL_UID) && VIEWER_MAP) { VIEWER_MAP.removeLayer(VIEWER_TRAIL_LAYER); VIEWER_TRAIL_LAYER = null; VIEWER_TRAIL_UID = ''; }
+  VIEWER_ROUTES = VIEWER_ROUTES.filter(route => !route.memberUid || !reportSet.has(route.memberUid));
+  VIEWER_ROUTES.push(...VIEWER_REPORTS.map(({ uid, assignment: a }) => ({ id: 'duty-' + uid, memberUid: uid, ps: a.ps || a.dutyPoint.sectorId,
+    route: a.dutyPoint.name, officer: a.officer || scope.officer || uid })));
   const stationIds = Object.keys(scope.stations || {}).filter(id => scope.stations[id] === true);
   const stationResults = await Promise.allSettled(stationIds.map(id => dbGet('config/stations/' + encodeURIComponent(id))));
   VIEWER_STATIONS = stationIds.flatMap((id, index) => stationResults[index].status === 'fulfilled' && stationResults[index].value && typeof stationResults[index].value === 'object' ? [{ id, ...stationResults[index].value }] : [])
@@ -4862,7 +4879,48 @@ async function loadViewerScope() {
   $('#viewerMandal').textContent = scope.mandal;
   $('#viewerOfficer').textContent = [rank, scope.officer || scope.mobile || 'Viewer'].filter(Boolean).join(' · ');
 }
+async function refreshViewerRoster() {
+  const panel = $('#viewerRosterPanel'); panel.hidden = !VIEWER_REPORTS.length;
+  if (!VIEWER_REPORTS.length) return;
+  const rows = (await Promise.all(VIEWER_REPORTS.map(async ({ uid, assignment: a }) => {
+    try {
+    const [live, allAttendance] = await Promise.all([dbGet('live/' + encodeURIComponent(uid)), dbGet('attendance/' + encodeURIComponent(uid))]);
+    if (!VIEWER_TRAILS[uid] || Date.now() - VIEWER_TRAILS[uid].loadedAt > 60000) {
+      const day = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10).replaceAll('-', '');
+      const trail = await dbGet(`track/${encodeURIComponent(uid)}/${day}/mobile`, '&orderBy=%22%24key%22&limitToLast=90').catch(() => ({}));
+      VIEWER_TRAILS[uid] = { loadedAt: Date.now(), points: Object.entries(trail || {}).filter(([t, p]) => Array.isArray(p) && p.length >= 3 && +p[2] <= 100 && Date.now() - Number(t) <= 15 * MIN)
+        .sort((a, b) => Number(a[0]) - Number(b[0])).map(([t, p]) => [+p[0], +p[1], Number(t)]) };
+    }
+    const current = live?.assignmentId === a.id && live?.sessionId ? allAttendance?.[live.sessionId] : null;
+    const fixAge = live?.t ? Date.now() - Number(live.t) : Infinity;
+    const state = !current?.arrivalAt && current?.confirmed !== 'left' ? 'Not arrived'
+      : live?.duty !== true || fixAge > 90000 || !live?.gps || current?.current === 'uncertain' ? 'Location uncertain'
+      : current?.current === 'at' ? 'At duty point' : current?.current === 'left' ? 'Left duty point' : 'Not arrived';
+    return { uid, a, live, current, state, trail: VIEWER_TRAILS[uid].points };
+    } catch (_) { return null; }
+  }))).filter(Boolean);
+  const bySector = rows.reduce((groups, row) => { (groups[row.a.dutyPoint.sectorId || 'Unassigned'] ||= []).push(row); return groups; }, {});
+  const totals = Object.entries(bySector)
+    .map(([sector, units]) => `${esc(sector)}: ${units.length} assigned, ${units.filter(x => x.state === 'At duty point').length} at point`).join(' · ');
+  panel.querySelector('h2').textContent = `${VIEWER_SCOPE.rank || 'Officer'} duty and reporting roster`;
+  $('#viewerRoster').innerHTML = `<p class="note">${totals}</p><div class="viewer-table-wrap"><table><thead><tr><th>Duty point</th><th>Officer</th><th>Arrival / presence</th><th>Last device fix</th></tr></thead><tbody>${rows.map(x => `<tr>
+    <td><b>${esc(x.a.dutyPoint.name)}</b><small>${esc(x.a.dutyPoint.eventName || x.a.dutyPoint.eventId)} · ${esc(x.a.dutyPoint.sectorId)}</small></td>
+    <td>${esc(x.a.officer || x.uid)}<small>${esc(x.a.designation || '')} · ${esc(x.a.route || 'Special duty')}</small></td>
+    <td>${esc(x.state)}<small>${x.current?.arrivalAt ? 'First arrival ' + esc(viewerTime(x.current.arrivalAt)) : 'No confirmed arrival'}${x.current?.transitions ? ' · ' + Object.keys(x.current.transitions).length + ' transitions' : ''}</small></td>
+    <td>${esc(viewerTime(x.live?.t))}<small>${x.live?.t ? Math.max(0, Math.round((Date.now() - x.live.t) / 1000)) + ' s old' : 'No GPS fix'} · ${esc(x.current?.source || 'device location pending')}${x.current?.accuracyM != null ? ' · ±' + esc(x.current.accuracyM) + ' m' : ''}</small><button type="button" class="viewer-full-btn" data-roster-trail="${esc(x.uid)}">Recent GPS trail (${x.trail.length} fixes)</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+$('#viewerRoster').addEventListener('click', e => {
+  const button = e.target.closest('[data-roster-trail]'); if (!button || !VIEWER_MAP) return;
+  const points = VIEWER_TRAILS[button.dataset.rosterTrail]?.points || [];
+  if (VIEWER_TRAIL_LAYER) VIEWER_MAP.removeLayer(VIEWER_TRAIL_LAYER);
+  if (points.length < 2) { $('#viewerMapNote').textContent = 'No recent GPS trail for this officer.'; return; }
+  VIEWER_TRAIL_UID = button.dataset.rosterTrail;
+  VIEWER_TRAIL_LAYER = L.polyline(points.map(p => [p[0], p[1]]), { color: '#2563eb', weight: 4, opacity: .9 }).addTo(VIEWER_MAP);
+  VIEWER_MAP.fitBounds(VIEWER_TRAIL_LAYER.getBounds(), { padding: [30, 30], maxZoom: 16, animate: false });
+  $('#viewerMapNote').textContent = `${points.length} device GPS fixes from ${viewerTime(points[0][2])} to ${viewerTime(points[points.length - 1][2])}; map line uses reported fixes.`;
+});
 async function refreshViewer() {
+  await refreshViewerRoster();
   const rows = await Promise.all(VIEWER_ROUTES.map(async route => {
     if (!route.memberUid) return { route, dev: {}, live: {}, sos: false };
     const uid = route.memberUid, now = Date.now(), seen = VIEWER_DETAIL[uid] || (VIEWER_DETAIL[uid] = { devAt: 0, dev: {}, events: [] });
@@ -4903,9 +4961,9 @@ async function refreshViewer() {
     VIEWER_MARKERS[x.uid].setStyle({ color: x.sos ? '#b02424' : '#1f5fa8' }).bindPopup(`<b>${esc(x.route.ps || '')} · ${esc(x.route.route || '')}</b><br>${esc(x.dev.officer || x.route.officer || 'Assigned member')} · ${esc(s.label)}<br>${Number.isFinite(+x.live.spd) ? `${Math.round(+x.live.spd)} km/h<br>` : ''}Last update: ${esc(viewerTime(x.live.up))}`);
   }
   for (const [uid, marker] of Object.entries(VIEWER_MARKERS)) if (!seen.has(uid)) { VIEWER_MAP.removeLayer(marker); delete VIEWER_MARKERS[uid]; stopGlide(uid); }
-  if ((boothPoints.length || points.length) && (!VIEWER_MAP._trackFitted || points.some(point => !VIEWER_MAP.getBounds().contains(point)))) { VIEWER_MAP.fitBounds([...boothPoints, ...points], { padding: [35, 35], maxZoom: 14, animate: false }); VIEWER_MAP._trackFitted = true; }
+  if (!VIEWER_TRAIL_LAYER && (boothPoints.length || points.length) && (!VIEWER_MAP._trackFitted || points.some(point => !VIEWER_MAP.getBounds().contains(point)))) { VIEWER_MAP.fitBounds([...boothPoints, ...points], { padding: [35, 35], maxZoom: 14, animate: false }); VIEWER_MAP._trackFitted = true; }
   const waiting = rows.filter(x => x.uid && x.live?.up && Date.now() - x.live.up <= 300000 && !viewerHasLocation(x.live)).length;
-  $('#viewerMapNote').textContent = `${boothPoints.length} polling booths · ${points.length} phone location${points.length === 1 ? '' : 's'}${waiting ? ` · ${waiting} phone${waiting === 1 ? '' : 's'} waiting for GPS fix` : ''}`;
+  if (!VIEWER_TRAIL_LAYER) $('#viewerMapNote').textContent = `${boothPoints.length} polling booths · ${points.length} phone location${points.length === 1 ? '' : 's'}${waiting ? ` · ${waiting} phone${waiting === 1 ? '' : 's'} waiting for GPS fix` : ''}`;
   $('#viewerUpdated').textContent = `Updated ${viewerTime(Date.now())}${missing ? ` · ${missing} unavailable` : ''}`;
 }
 function setViewerFullMap(on) {
@@ -4977,6 +5035,7 @@ function start() {
   if (booted) return; booted = true;
   $('#app').hidden = false; $('#login').hidden = true;
   $('#who').textContent = AU.email || '';
+  $('#dutyPointsBtn').hidden = USER_ROLE !== 'admin';
   bridgeAuth();
   initMap();
   stream('devices', '', DEV, () => { loadTrails(); schedule(); }, { every: 15000 });
@@ -5222,7 +5281,8 @@ function hvKm(a, b, c, d) { const R = 6371, r = Math.PI / 180, x = (c - a) * r, 
 const kmTxt = km => km.toFixed(km < 10 ? 1 : 0) + ' km';
 function unitTip(u) {
   const Lv = LIVE[u] || {}, st = status(u);
-  const base = `<b>${esc(dname(u))}</b> · ${esc(FORCE[forceOf(u)].n)}<br>${esc(DEV[u].officer || '')} ${esc(DEV[u].mobile || '')}<br>${esc(st.txt)} · updated ${ago(Lv.up)}${Lv.bat >= 0 ? ` · battery ${Lv.bat}%${Lv.chg ? ' (charging)' : ''}` : ''}`;
+  const old = Lv.lat != null && Lv.lng != null && (st.k === 'nosig' || st.k === 'gpsoff' || st.k === 'weak' || Lv.duty === false);
+  const base = `<b>${esc(dname(u))}</b> · ${esc(FORCE[forceOf(u)].n)}<br>${esc(DEV[u].officer || '')} ${esc(DEV[u].mobile || '')}<br>${esc(st.txt)}${old ? ' · last known position' : ''} · last fix ${Lv.t ? ago(Lv.t) : 'never'} · contact ${Lv.receivedAt || Lv.up ? ago(Lv.receivedAt || Lv.up) : 'never'}${Lv.bat >= 0 ? ` · battery ${Lv.bat}%${Lv.chg ? ' (charging)' : ''}` : ''}`;
   return HOVER_U === u ? base + nearbyHtml(u) : base;
 }
 function nearbyHtml(u) {
@@ -5538,7 +5598,7 @@ function paneVeh() {
   let lastG = '';
   ids.forEach(u => { const g = [DEV[u].sd, DEV[u].ps].filter(Boolean).join(' · '); if (g !== lastG) { h += `<div class="grp">${esc(g || 'No police station')}</div>`; lastG = g; } h += vehCard(u); });
   const psN = x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim(); const notStarted = routes().filter(r => visible2(r) && !Object.values(DEV).some(d => psN(d.ps) === psN(r.ps) && norm(d.route) === norm(r.route)));
-  if (notStarted.length && !UI.fStatus) h += `<div class="grp">Routes with no phone registered (${notStarted.length})</div><p class="note" style="margin:2px 0 6px">No phone has started TRACE for these routes. Call the officer to install the app and press START DUTY.</p><div class="nsl">${notStarted.map(r => `<div><span><b>${esc(r.ps + ' – ' + r.route)}</b><br><span class="note">${esc(r.officer || 'Officer not entered')}</span></span>${r.mobile ? `<a class="btn small" href="tel:${esc(r.mobile)}">Call ${esc(r.mobile)}</a>` : ''}</div>`).join('')}</div>`;
+  if (notStarted.length && !UI.fStatus) h += `<div class="grp">Routes with no phone registered (${notStarted.length})</div><p class="note" style="margin:2px 0 6px">No phone has started the Route app for these routes. Call the officer to install the app and press START DUTY.</p><div class="nsl">${notStarted.map(r => `<div><span><b>${esc(r.ps + ' – ' + r.route)}</b><br><span class="note">${esc(r.officer || 'Officer not entered')}</span></span>${r.mobile ? `<a class="btn small" href="tel:${esc(r.mobile)}">Call ${esc(r.mobile)}</a>` : ''}</div>`).join('')}</div>`;
   return h || '<p class="note">No vehicle matches.</p>';
 }
 const visible2 = r => (!UI.fSd || r.sd === UI.fSd) && (!UI.fPs || r.ps === UI.fPs);
@@ -5737,7 +5797,7 @@ async function makeReport(day) {
   const wb = XLSX.utils.book_new();
   const head = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '15233A' } }, alignment: { wrapText: true, vertical: 'center' } };
   const sheet = (title, H, R, fill) => {
-    const aoa = [[title], ['RESTRICTED – for official use of TRACE Control Room only. Do not share.'], H, ...R.map(r => r.v || r)]; const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const aoa = [[title], ['RESTRICTED – for official use of TRACK Control Room only. Do not share.'], H, ...R.map(r => r.v || r)]; const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['A1'].s = { font: { bold: true, sz: 14 } };
     H.forEach((_, c) => { const a = XLSX.utils.encode_cell({ r: 2, c }); if (ws[a]) ws[a].s = head; });
     R.forEach((r, i) => { const f = fill && fill(r); if (f) H.forEach((_, c) => { const a = XLSX.utils.encode_cell({ r: i + 3, c }); if (!ws[a]) ws[a] = { t: 's', v: '' }; ws[a].s = { fill: { fgColor: { rgb: f } } }; }); });
@@ -5924,7 +5984,7 @@ async function saveMemberAssignment(routeId, member) {
   if (route.memberUid && route.memberUid !== uid) throw new Error('This route already has an assigned member. Use that account or ask the administrator to review the existing assignment.');
   const live = await dbGet('live/' + uid);
   if (live && live.duty === true) throw new Error('Stop duty on this member’s phone before changing the assignment.');
-  const assignment = { routeId, ps: route.ps, route: route.route, sd: route.sd || '', election: route.election || '', officer, mobile };
+  const assignment = { ...(existing || {}), routeId, ps: route.ps, route: route.route, sd: route.sd || '', election: route.election || '', officer, mobile };
   const review = route.coverageStatus === 'proposed' ? { ['config/routes/' + routeId + '/coverageStatus']: 'reviewed', ['config/routes/' + routeId + '/coverageReviewedBy']: AU.uid, ['config/routes/' + routeId + '/coverageReviewedAt']: Date.now() } : {};
   if (route.coverageStatus === 'proposed' && member.coverageReviewed !== 'on') throw new Error('Review the changed polling coverage before assigning this route.');
   await dbPatch('', { ['roles/' + uid]: 'route', ['assignments/' + uid]: assignment,
@@ -6398,6 +6458,79 @@ async function siMonitorModal(editUid = '', existing = null) {
   form.querySelector('[name=officer]').focus();
 }
 function xlsTemplate(name, H, ex) { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([H, ...ex]), 'Sheet1'); XLSX.writeFile(wb, name); }
+
+async function dutyPointModal() {
+  if (await dbGet('roles/' + AU.uid) !== 'admin') throw new Error('Administrator access is required.');
+  const [assignments, scopes] = await Promise.all([dbGet('assignments'), dbGet('siScopes')]);
+  const people = Object.entries({ ...(assignments || {}), ...(scopes || {}) })
+    .map(([uid, person]) => ({ uid, name: person.officer || uid, rank: person.rank || person.designation || '' }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const modal = document.createElement('div'); modal.className = 'modal member-modal';
+  modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); modal.setAttribute('aria-label', 'Assign duty point');
+  modal.innerHTML = `<form class="card" style="max-height:90vh;overflow:auto"><h2>Assign duty point</h2>
+    <p class="note">Use approved event and roster details. Times are shown in Asia/Kolkata. A point change during active duty requires the officer to stop first.</p>
+    <label class="f">Officer or official<select name="uid" required><option value="">Choose account</option>${people.map(p => `<option value="${esc(p.uid)}">${esc(p.name)} · ${esc(p.rank)} · ${esc(p.uid)}</option>`).join('')}</select></label>
+    <label class="f">Designation<input name="designation" maxlength="80"></label>
+    <label class="f">Reports to (supervisor UID)<input name="supervisorUid" list="dutySupervisors" placeholder="Authenticated supervisor UID"></label>
+    <datalist id="dutySupervisors">${Object.entries(scopes || {}).map(([uid, s]) => `<option value="${esc(uid)}">${esc(s.officer || uid)}</option>`).join('')}</datalist>
+    <label class="f">Event ID<input name="eventId" required maxlength="80" placeholder="Approved event ID"></label>
+    <label class="f">Event name<input name="eventName" required maxlength="120"></label>
+    <label class="f">Sector ID<input name="sectorId" required maxlength="80"></label>
+    <label class="f">Reporting group ID<input name="reportingGroupId" maxlength="80"></label>
+    <label class="f">Duty point ID<input name="pointId" required maxlength="80"></label>
+    <label class="f">Duty point name<input name="pointName" required maxlength="120"></label>
+    <div class="row"><label class="f">Latitude<input name="lat" type="number" step="any" min="-90" max="90" required></label><label class="f">Longitude<input name="lng" type="number" step="any" min="-180" max="180" required></label><label class="f">Radius (metres)<input name="radiusM" type="number" min="30" max="2000" value="100" required></label></div>
+    <label class="f">Window start, IST<input name="windowStart" type="datetime-local"></label><label class="f">Window end, IST<input name="windowEnd" type="datetime-local"></label>
+    <label class="f">Duty instructions<textarea name="instructions" rows="2" maxlength="1000"></textarea></label>
+    <label class="row"><input name="grantScope" type="checkbox">Grant this official access to this event and sector (viewer account only)</label>
+    <div class="err" role="alert"></div><div class="row" style="justify-content:flex-end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Save assignment</button></div></form>`;
+  document.body.appendChild(modal);
+  const form = modal.querySelector('form');
+  modal.querySelector('[data-close]').onclick = () => modal.remove();
+  const toLocal = t => t ? new Date(Number(t) + 330 * 60000).toISOString().slice(0, 16) : '';
+  form.elements.uid.onchange = () => {
+    const a = assignments?.[form.elements.uid.value] || {}, p = a.dutyPoint || {};
+    for (const [name, value] of Object.entries({ designation: a.designation || '', supervisorUid: a.supervisorUid || '', eventId: p.eventId || '', eventName: p.eventName || '', sectorId: p.sectorId || '', reportingGroupId: p.reportingGroupId || '', pointId: p.id || '', pointName: p.name || '', lat: p.lat ?? '', lng: p.lng ?? '', radiusM: p.radiusM || 100, windowStart: toLocal(p.windowStart), windowEnd: toLocal(p.windowEnd), instructions: p.instructions || '' })) form.elements[name].value = value;
+  };
+  form.onsubmit = async e => {
+    e.preventDefault(); const button = form.querySelector('[type=submit]'); button.disabled = true; form.querySelector('.err').textContent = '';
+    try {
+      if (await dbGet('roles/' + AU.uid) !== 'admin') throw new Error('Administrator access is required.');
+      const data = new FormData(form), uid = String(data.get('uid')), role = await dbGet('roles/' + uid);
+      if (!['route', 'si_monitor'].includes(role)) throw new Error('Choose an approved officer or viewer account.');
+      const supervisorUid = String(data.get('supervisorUid') || '').trim();
+      if (supervisorUid && (!scopes?.[supervisorUid] || supervisorUid === uid)) throw new Error('Reports-to UID must belong to another approved viewer account.');
+      const id = String(data.get('pointId')).trim(), eventId = String(data.get('eventId')).trim(), sectorId = String(data.get('sectorId')).trim();
+      if (![id, eventId, sectorId].every(value => /^[A-Za-z0-9_-]{1,80}$/.test(value))) throw new Error('Point, event and sector IDs must use letters, numbers, _ or -.');
+      const lat = Number(data.get('lat')), lng = Number(data.get('lng')), radiusM = Number(data.get('radiusM'));
+      if (!Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lng) || Math.abs(lng) > 180 || radiusM < 30 || radiusM > 2000) throw new Error('Enter valid coordinates and a radius from 30 to 2000 metres.');
+      const parseWindow = value => value ? Date.parse(String(value) + '+05:30') : 0;
+      const windowStart = parseWindow(data.get('windowStart')), windowEnd = parseWindow(data.get('windowEnd'));
+      if ((windowStart && !Number.isFinite(windowStart)) || (windowEnd && !Number.isFinite(windowEnd)) || (windowStart && windowEnd && windowEnd <= windowStart)) throw new Error('Enter a valid duty window in IST.');
+      const point = { id, name: String(data.get('pointName')).trim(), eventId, eventName: String(data.get('eventName')).trim(), sectorId,
+        reportingGroupId: String(data.get('reportingGroupId') || '').trim(), lat, lng, radiusM, windowStart, windowEnd,
+        instructions: String(data.get('instructions') || '').trim() };
+      if (!point.name || !point.eventName) throw new Error('Enter the point and event names.');
+      const old = await dbGet('assignments/' + uid) || {};
+      const pointChanged = JSON.stringify(old.dutyPoint || null) !== JSON.stringify(point);
+      if (pointChanged && (await dbGet('live/' + uid))?.duty === true) throw new Error('Ask this officer to stop duty before changing their point. Reporting supervisor can be updated during duty.');
+      const assignment = { ...old, id: pointChanged || !old.id ? crypto.randomUUID().replaceAll('-', '') : old.id,
+        designation: String(data.get('designation') || '').trim(), supervisorUid, dutyPoint: point };
+      if (role === 'route' && (!assignment.ps || !assignment.route)) throw new Error('Assign this officer to a route first.');
+      const updates = { ['assignments/' + uid]: assignment };
+      if (data.get('grantScope') === 'on') {
+        if (role !== 'si_monitor') throw new Error('Only viewer accounts can receive monitor scope.');
+        if (!scopes?.[uid]) throw new Error('Create the viewer login first.');
+        updates['siScopes/' + uid + '/events/' + eventId] = true;
+        updates['siScopes/' + uid + '/sectors/' + sectorId] = true;
+      }
+      await dbPatch('', updates);
+      modal.remove(); toast('Duty assignment saved. The officer must refresh My Duty before starting.');
+    } catch (error) { form.querySelector('.err').textContent = error.message; }
+    finally { button.disabled = false; }
+  };
+}
+$('#dutyPointsBtn').onclick = () => dutyPointModal().catch(showError);
 
 /* ---------- events ---------- */
 document.addEventListener('click', async e => {
@@ -6985,7 +7118,7 @@ function paneSum() {
 function sitrepText() {
   const N = numbers(), now = Date.now(), sc = UI.fPs ? UI.fPs + ' PS' : UI.fSd ? UI.fSd + ' Sub-Division' : 'All districts';
   const L_ = [];
-  L_.push(`*TRACE CONTROL ROOM*`, `*${ELEC() || 'Election'} – Situation report*`, `${sc} · ${fD(now)} ${fT(now)} hrs`, '');
+  L_.push(`*TRACK CONTROL ROOM*`, `*${ELEC() || 'Election'} – Situation report*`, `${sc} · ${fD(now)} ${fT(now)} hrs`, '');
   L_.push(`*Route mobiles:* ${N.active} of ${N.ids.length} active${N.k.nosig ? `, ${N.k.nosig} no signal` : ''}${N.k.none ? `, ${N.k.none} not started` : ''}.`);
   if (N.all.length) L_.push(`*Polling locations:* ${N.all.length} · visited in last ${S().green} min: ${N.cv.g} (${Math.round(N.cv.g * 100 / N.all.length)}%) · no visit ${S().red}+ min: ${N.cv.r}${N.redHyper.length ? ` (hypersensitive: ${N.redHyper.length})` : ''}.`);
   L_.push(`*Incidents today:* ${N.I.length} · open: ${N.open.length}${N.avg != null ? ` · average response: ${fMin(N.avg)}` : ''}.`);
@@ -7007,7 +7140,7 @@ function sitrepModal() {
     if (e.target === m || e.target.hasAttribute('data-x')) m.remove();
     if (e.target.hasAttribute('data-copy')) { try { await navigator.clipboard.writeText(v); } catch (er) { m.querySelector('#srT').select(); document.execCommand('copy'); } toast('Copied. Paste it in WhatsApp.'); }
     if (e.target.hasAttribute('data-wa')) window.open('https://wa.me/?text=' + encodeURIComponent(v), '_blank');
-    if (e.target.hasAttribute('data-print')) { m.remove(); printHtml(`<style>@page{size:A4;margin:16mm}</style><div style="display:flex;align-items:center;gap:12px;border-bottom:2px solid #15233a;padding-bottom:8px;margin-bottom:10px"><img src="${$('.logo').src}" style="width:60px;height:60px"><div style="font:700 15pt 'Segoe UI',Arial">TRACE Control Room<br><span style="font-size:11pt;font-weight:400">Election Control Room</span></div></div><div style="font:12pt/1.55 'Segoe UI',Arial,sans-serif;white-space:pre-wrap">${esc(v).replace(/\*(.+?)\*/g, '<b>$1</b>')}</div>`); }
+    if (e.target.hasAttribute('data-print')) { m.remove(); printHtml(`<style>@page{size:A4;margin:16mm}</style><div style="display:flex;align-items:center;gap:12px;border-bottom:2px solid #15233a;padding-bottom:8px;margin-bottom:10px"><img src="${$('.logo').src}" style="width:60px;height:60px"><div style="font:700 15pt 'Segoe UI',Arial">TRACK Control Room<br><span style="font-size:11pt;font-weight:400">Election Control Room</span></div></div><div style="font:12pt/1.55 'Segoe UI',Arial,sans-serif;white-space:pre-wrap">${esc(v).replace(/\*(.+?)\*/g, '<b>$1</b>')}</div>`); }
   });
 }
 
@@ -7306,7 +7439,7 @@ function turnoutReport() {
     tr.sub td{background:#f6f8fb;font-weight:700}
     .foot{font-size:10.5px;color:#666;margin-top:8px}</style>
     <div class="hd">${logo ? `<img src="${logo}">` : ''}<div>
-      <div class="org">TRACE CONTROL ROOM</div>
+      <div class="org">TRACK CONTROL ROOM</div>
       <h2>Poll Percentage — by Polling Location</h2>
       <div class="meta">${esc(s.election || 'Election')} · ${scopeTxt} · as on ${fD(Date.now())} ${fT(Date.now())}</div></div></div>
     <div class="sum"><b>Overall: ${T.pct == null ? '—' : pctTxt(T.pct)}</b> — ${fmtN(T.n)} votes polled${T.tot ? ` of ${fmtN(T.tot)} voters` : ''}; reported from <b>${T.rep}</b> of ${T.all} locations${T.latest ? ` (latest ${fT(T.latest)})` : ''}.</div>
@@ -7354,7 +7487,7 @@ function helpModal() {
 document.addEventListener('click', e => { if (e.target.closest('[data-help]')) { e.preventDefault(); helpModal(); } });
 function helpControl() { if (typeof MAP === 'undefined' || !MAP || helpControl.done) return; helpControl.done = true; const c = L.control({ position: 'topleft' }); c.onAdd = () => { const d = L.DomUtil.create('div', 'leaflet-bar'); d.innerHTML = '<a href="#" class="helpc" title="How to use · official use only" data-help>?</a>'; L.DomEvent.disableClickPropagation(d); return d; }; c.addTo(MAP); }
 const _startH = start; start = function () { const r = _startH.apply(this, arguments); try { helpControl(); addStamp(); } catch (e) { } return r; };
-function addStamp() { if (addStamp.done) return; const host = $('#map') || $('#app'); if (!host) return; addStamp.done = true; const d = document.createElement('div'); d.className = 'stamp'; d.textContent = 'RESTRICTED · OFFICIAL USE ONLY · TRACE CONTROL ROOM'; host.appendChild(d); }
+function addStamp() { if (addStamp.done) return; const host = $('#map') || $('#app'); if (!host) return; addStamp.done = true; const d = document.createElement('div'); d.className = 'stamp'; d.textContent = 'RESTRICTED · OFFICIAL USE ONLY · TRACK CONTROL ROOM'; host.appendChild(d); }
 const _sitH = sitrepText;
 sitrepText = function () { return _sitH() + '\n_Restricted – for official use only. Do not forward outside the department._'; };
 
@@ -7572,7 +7705,7 @@ function blockedIds() { return Object.keys(DEV).filter(u => isBlocked(u) && inEl
 
 function blockedSection() {
   const B = blockedIds(); if (!B.length) return '';
-  return `<div class="grp" style="color:#b0261f">⛔ Blocked second phones (${B.length})</div><p class="note">Only one phone can run each route. These phones tried to run a route that is already active on another phone, so TRACE stopped them. If one of them is the correct phone, press <b>Make this the route's phone</b>; the other phone then stops by itself, and the officer presses START DUTY on this one.</p>`
+  return `<div class="grp" style="color:#b0261f">⛔ Blocked second phones (${B.length})</div><p class="note">Only one phone can run each route. These phones tried to run a route that is already active on another phone, so the control room stopped them. If one of them is the correct phone, press <b>Make this the route's phone</b>; the other phone then stops by itself, and the officer presses START DUTY on this one.</p>`
     + B.map(u => { const d = DEV[u], L = LOCK[lockKey(d)] || {}, r = routeOf(d) || {}, Lv = LIVE[u] || {};
       const ok = r.mobile && last10(d.mobile) === last10(r.mobile);
       return `<div class="veh blk" data-u="${u}" style="border-left-color:#e0413a"><div class="l1"><span>${esc(dname(u))}</span><span class="st" style="color:#e0413a">Blocked</span></div>
@@ -7678,7 +7811,7 @@ function pollXlsx(auto) {
   const at = (p, t) => { const h = V.hist[p.id]; if (!h) return null; const x = t ? h.filter(a => a[0] <= t).pop() : h[h.length - 1]; return x || null; };
   const scope = UI.fPs ? UI.fPs : UI.fSd ? UI.fSd + ' Sub-Division' : 'All police stations';
   const title = `Poll percentage, location-wise — ${ELEC() || 'Election'} — ${scope} — as at ${fD(now)} ${fT(now)}`;
-  const note = 'As reported by the route mobiles (VOTES POLLED button). Official figures are with the election staff. RESTRICTED – for official use of TRACE Control Room only.';
+  const note = 'As reported by the route mobiles (VOTES POLLED button). Official figures are with the election staff. RESTRICTED – for official use of TRACK Control Room only.';
   // sheet 1: each polling location
   const H = ['S.No', 'Sub-division', 'Police station', 'Route', 'Polling location', 'Sensitivity', 'Total voters'];
   M.forEach(t => H.push(`Votes ${fT(t)}`, `% ${fT(t)}`));

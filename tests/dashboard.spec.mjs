@@ -42,6 +42,35 @@ test('SI monitor shows only assigned mandal routes and their live phones', async
   expect(reads).not.toContain('/config/stations.json');
 });
 
+test('scoped viewer shows current duty presence and real recent fixes, then removes reassigned officer', async ({ page }) => {
+  const now = Date.now(), day = new Date(now + 330 * 60000).toISOString().slice(0, 10).replaceAll('-', '');
+  const assignment = { id: 'assignment-a', officer: 'Constable A', designation: 'Constable', route: 'Route 1', supervisorUid: 'si-1',
+    dutyPoint: { id: 'gate-a', name: 'North Gate', eventId: 'cm-event', eventName: 'CM programme', sectorId: 'north', lat: 17, lng: 81, radiusM: 100 } };
+  const data = {
+    '/roles/si-1.json': 'si_monitor',
+    '/siScopes/si-1.json': { mandal: 'North', rank: 'SI', officer: 'SI One', events: { 'cm-event': true }, sectors: { north: true } },
+    '/reportingRoster/si-1.json': { 'unit-a': true },
+    '/assignments/unit-a.json': assignment,
+    '/live/unit-a.json': { lat: 17, lng: 81, t: now, up: now, gps: true, duty: true, sessionId: 'duty-a', assignmentId: 'assignment-a' },
+    '/attendance/unit-a.json': { 'duty-a': { current: 'at', confirmed: 'at', arrivalAt: now - 10000, latestFixTime: now, source: 'device GPS', accuracyM: 8, transitions: { arrival: { type: 'arrival' } } } },
+    [`/track/unit-a/${day}/mobile.json`]: { [now - 10000]: [17, 81, 8, 0], [now]: [17.0001, 81.0001, 8, 1] },
+  };
+  await page.addInitScript(() => sessionStorage.setItem('rm_si_au', JSON.stringify({ rt: 'viewer-refresh', uid: 'si-1', email: 'si919876543210@members.track.invalid' })));
+  await page.route('https://securetoken.googleapis.com/**', route => route.fulfill({ json: { id_token: 'viewer-token', expires_in: '3600', refresh_token: 'viewer-refresh', user_id: 'si-1' } }));
+  await page.route('https://officer-8eb52-default-rtdb.asia-southeast1.firebasedatabase.app/**', route => route.fulfill({ json: data[new URL(route.request().url()).pathname] ?? null }));
+  await page.route('https://*.tile.openstreetmap.org/**', route => route.abort());
+  await page.goto(siUrl);
+  await expect(page.locator('#roster')).toContainText('North Gate');
+  await expect(page.locator('#roster')).toContainText('At duty point');
+  await expect(page.locator('#roster')).toContainText('First arrival');
+  await page.getByRole('button', { name: 'Recent GPS trail (2 fixes)' }).click();
+  await expect(page.locator('#mapNote')).toContainText('device GPS fixes');
+  data['/reportingRoster/si-1.json'] = null;
+  await page.evaluate(async () => { await loadScope(); await refresh(); });
+  await expect(page.locator('#rosterPanel')).toBeHidden();
+  expect(await page.evaluate(() => selectedTrail)).toBeNull();
+});
+
 test('viewer distinguishes a connected phone from a phone with a GPS position', async ({ page }) => {
   const now = Date.now();
   await page.addInitScript(() => sessionStorage.setItem('rm_si_au', JSON.stringify({ rt: 'si-refresh', uid: 'si-1', email: 'si919876543210@members.track.invalid' })));
@@ -93,7 +122,7 @@ test('viewer and administrator use the same sign-in page', async ({ page }) => {
   await page.goto(url);
   await expect(page.locator('#lMobile')).toBeVisible();
   await expect(page.locator('#lRank')).toBeVisible();
-  await expect(page.locator('#lRank option')).toHaveText(['Choose rank', 'Incharge', 'Striking Force', 'Sub-Striking Force', 'DSP']);
+  await expect(page.locator('#lRank option')).toHaveText(['Choose rank', 'SI', 'CI', 'Sector Supervisor', 'Incharge', 'Striking Force', 'Sub-Striking Force', 'DSP']);
   await expect(page.locator('#lEmail')).toBeHidden();
   await page.getByRole('button', { name: 'Administrator Login' }).click();
   await expect(page.locator('#lEmail')).toBeVisible();
@@ -778,6 +807,34 @@ test('administrator creates a mobile login and assigns its route without changin
   expect(authRequests).toEqual([{ email: 'phone919876543210@members.track.invalid', password: 'Example-test-password', returnSecureToken: true }]);
   expect(await page.evaluate(() => AU.uid)).toBe('admin-1');
   expect(JSON.stringify(writes)).not.toContain('password');
+});
+
+test('administrator assigns an event point with an IST window and reporting UID', async ({ page }) => {
+  const existing = { routeId: 'r1', ps: 'Example Rural Police Station', route: 'Route 12', officer: 'Constable A', mobile: '+919876543210' };
+  const writes = await controlRoom(page, { '/assignments.json': { 'officer-1': existing }, '/assignments/officer-1.json': existing,
+    '/siScopes.json': { 'si-1': { officer: 'SI One', rank: 'SI', mandal: 'North' } }, '/roles/officer-1.json': 'route', '/live/officer-1.json': null });
+  await page.getByRole('button', { name: 'Duty points' }).click();
+  const modal = page.getByRole('dialog', { name: 'Assign duty point' });
+  await modal.locator('[name=uid]').selectOption('officer-1');
+  await modal.locator('[name=designation]').fill('Constable');
+  await modal.locator('[name=supervisorUid]').fill('si-1');
+  await modal.locator('[name=eventId]').fill('cm-event');
+  await modal.locator('[name=eventName]').fill('CM programme');
+  await modal.locator('[name=sectorId]').fill('north');
+  await modal.locator('[name=pointId]').fill('gate-a');
+  await modal.locator('[name=pointName]').fill('North Gate');
+  await modal.locator('[name=lat]').fill('17.01');
+  await modal.locator('[name=lng]').fill('81.02');
+  await modal.locator('[name=radiusM]').fill('100');
+  await modal.locator('[name=windowStart]').fill('2026-11-24T09:00');
+  await modal.locator('[name=windowEnd]').fill('2026-11-24T18:00');
+  await modal.getByRole('button', { name: 'Save assignment' }).click();
+  await expect(modal).toBeHidden();
+  const saved = writes.find(w => w.body['assignments/officer-1'])?.body['assignments/officer-1'];
+  expect(saved).toMatchObject({ ...existing, designation: 'Constable', supervisorUid: 'si-1', dutyPoint: {
+    id: 'gate-a', name: 'North Gate', eventId: 'cm-event', sectorId: 'north', lat: 17.01, lng: 81.02, radiusM: 100,
+    windowStart: Date.parse('2026-11-24T09:00+05:30'), windowEnd: Date.parse('2026-11-24T18:00+05:30') } });
+  expect(saved.id).toMatch(/^[a-z0-9_-]{1,80}$/i);
 });
 
 test('editing a route preserves its assigned member', async ({ page }) => {

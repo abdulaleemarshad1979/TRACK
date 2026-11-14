@@ -15,6 +15,7 @@
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
     </activity>
     <service android:name=".TrackService" android:exported="false" android:foregroundServiceType="location"/>
+    <service android:name=".OutboxRetryJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true"/>
     <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.files" android:exported="false" android:grantUriPermissions="true">
       <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths"/>
     </provider>

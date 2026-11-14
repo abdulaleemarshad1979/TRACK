@@ -13,14 +13,18 @@
     "assignments": {
       ".read": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'",
       "$uid": {
-        ".read": "auth != null && (auth.uid == $uid || root.child('roles').child(auth.uid).val() == 'admin')",
-        ".write": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'"
-      }
+        ".read": "(auth != null && (auth.uid == $uid || root.child('roles').child(auth.uid).val() == 'admin')) || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true) || (root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child($uid).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child($uid).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child($uid).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child($uid).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid))))",
+        ".write": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'",
+        ".validate": "!newData.child('dutyPoint').exists() || (newData.child('id').isString() && newData.child('id').val().matches(/^[A-Za-z0-9_-]{1,80}$/) && newData.child('dutyPoint').hasChildren(['id','name','lat','lng','radiusM','eventId','sectorId']) && newData.child('dutyPoint').child('id').isString() && newData.child('dutyPoint').child('name').isString() && newData.child('dutyPoint').child('lat').isNumber() && newData.child('dutyPoint').child('lat').val() >= -90 && newData.child('dutyPoint').child('lat').val() <= 90 && newData.child('dutyPoint').child('lng').isNumber() && newData.child('dutyPoint').child('lng').val() >= -180 && newData.child('dutyPoint').child('lng').val() <= 180 && newData.child('dutyPoint').child('radiusM').isNumber() && newData.child('dutyPoint').child('radiusM').val() >= 30 && newData.child('dutyPoint').child('radiusM').val() <= 2000 && newData.child('dutyPoint').child('eventId').isString() && newData.child('dutyPoint').child('sectorId').isString() && (!newData.child('dutyPoint').child('windowStart').exists() || newData.child('dutyPoint').child('windowStart').isNumber()) && (!newData.child('dutyPoint').child('windowEnd').exists() || newData.child('dutyPoint').child('windowEnd').isNumber()))"
+      },
+      ".indexOn": [
+        "supervisorUid"
+      ]
     },
     "officers": {
       ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || root.child('roles').child(auth.uid).val() == 'monitor')",
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
+        ".read": "(auth != null && auth.uid == $uid) || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true) || (root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child($uid).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child($uid).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child($uid).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child($uid).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid))))",
         ".write": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'"
       }
     },
@@ -29,7 +33,7 @@
       ".write": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'",
       "routes": {
         "$rid": {
-          ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'si_monitor' && root.child('siScopes').child(auth.uid).child('routes').child($rid).val() == true)"
+          ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'si_monitor' && root.child('siScopes').child(auth.uid).child('routes').child($rid).val() == true) && (!root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('dutyPoint').exists() || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('routeId').val()).val() == true) || (root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child(root.child('config').child('routes').child($rid).child('memberUid').val()).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid)))))"
         }
       },
       "stations": {
@@ -41,15 +45,16 @@
     "devices": {
       ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || root.child('roles').child(auth.uid).val() == 'monitor')",
       "$uid": {
-        ".read": "(auth != null && auth.uid == $uid) || (auth != null && (root.child('roles').child(auth.uid).val() == 'si_monitor' && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true))",
+        ".read": "(auth != null && auth.uid == $uid) || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true) || (root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child($uid).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child($uid).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child($uid).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child($uid).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid))))",
         ".write": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || (auth.uid == $uid && root.child('roles').child(auth.uid).val() == 'route' && root.child('assignments').child(auth.uid).exists() && newData.child('ps').val() == root.child('assignments').child(auth.uid).child('ps').val() && newData.child('route').val() == root.child('assignments').child(auth.uid).child('route').val()))"
       }
     },
     "live": {
       ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || root.child('roles').child(auth.uid).val() == 'monitor')",
       "$uid": {
-        ".read": "(auth != null && auth.uid == $uid) || (auth != null && (root.child('roles').child(auth.uid).val() == 'si_monitor' && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true))",
-        ".write": "(auth != null && root.child('roles').child(auth.uid).val() == 'admin' || (auth != null && auth.uid == $uid && root.child('roles').child(auth.uid).val() == 'route' && root.child('assignments').child(auth.uid).exists()))"
+        ".read": "(auth != null && auth.uid == $uid) || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true) || (root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child($uid).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child($uid).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child($uid).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child($uid).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid))))",
+        ".write": "(auth != null && root.child('roles').child(auth.uid).val() == 'admin' || (auth != null && auth.uid == $uid && root.child('roles').child(auth.uid).val() == 'route' && root.child('assignments').child(auth.uid).exists()))",
+        ".validate": "(!newData.child('up').exists() || (newData.child('up').isNumber() && (!data.child('up').exists() || newData.child('up').val() >= data.child('up').val()) && newData.child('up').val() <= now + 60000)) && (!newData.child('lat').exists() || (newData.child('lat').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').isNumber() && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180)) && (!newData.child('acc').exists() || (newData.child('acc').isNumber() && newData.child('acc').val() >= 0 && newData.child('acc').val() <= 10000)) && (!newData.child('assignmentId').exists() || newData.child('assignmentId').val() == root.child('assignments').child($uid).child('id').val())"
       }
     },
     "viewerLive": {
@@ -58,29 +63,47 @@
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && ((auth.uid == $uid && root.child('roles').child(auth.uid).val() == 'si_monitor' && root.child('siScopes').child(auth.uid).exists()) || root.child('roles').child(auth.uid).val() == 'admin')",
         ".validate": "newData.hasChildren(['lat', 'lng', 't']) && newData.child('lat').isNumber() && newData.child('lat').val() >= -90 && newData.child('lat').val() <= 90 && newData.child('lng').isNumber() && newData.child('lng').val() >= -180 && newData.child('lng').val() <= 180 && newData.child('t').isNumber() && newData.child('t').val() <= now + 60000 && newData.child('t').val() >= now - 600000 && (!newData.child('acc').exists() || (newData.child('acc').isNumber() && newData.child('acc').val() >= 0 && newData.child('acc').val() <= 10000))",
-        "lat": { ".validate": "newData.isNumber()" },
-        "lng": { ".validate": "newData.isNumber()" },
-        "t": { ".validate": "newData.isNumber()" },
-        "acc": { ".validate": "newData.isNumber()" },
-        "$other": { ".validate": false }
+        "lat": {
+          ".validate": "newData.isNumber()"
+        },
+        "lng": {
+          ".validate": "newData.isNumber()"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "acc": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
       }
     },
     "track": {
       ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || root.child('roles').child(auth.uid).val() == 'monitor')",
       "$uid": {
-        ".read": "(auth != null && auth.uid == $uid) || (auth != null && (root.child('roles').child(auth.uid).val() == 'si_monitor' && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true))",
-        ".write": "(auth != null && root.child('roles').child(auth.uid).val() == 'admin' || (auth != null && auth.uid == $uid && root.child('roles').child(auth.uid).val() == 'route' && root.child('assignments').child(auth.uid).exists()))"
+        ".read": "(auth != null && auth.uid == $uid) || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true) || (root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child($uid).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child($uid).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child($uid).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child($uid).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid))))",
+        ".write": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'",
+        "$day": {
+          "mobile": {
+            "$fixTime": {
+              ".write": "auth != null && auth.uid == $uid && root.child('roles').child(auth.uid).val() == 'route' && root.child('assignments').child(auth.uid).exists() && (!data.exists() || newData.val() == data.val())",
+              ".validate": "newData.hasChildren(['0','1','2','3']) && newData.child('0').isNumber() && newData.child('0').val() >= -90 && newData.child('0').val() <= 90 && newData.child('1').isNumber() && newData.child('1').val() >= -180 && newData.child('1').val() <= 180 && newData.child('2').isNumber() && newData.child('2').val() >= 0 && newData.child('2').val() <= 150 && (!newData.child('4').exists() || (newData.child('4').child('assignmentId').val() == root.child('assignments').child($uid).child('id').val() || root.child('dutySessions').child($uid).child(newData.child('4').child('sessionId').val()).child('assignmentId').val() == newData.child('4').child('assignmentId').val()))"
+            }
+          }
+        }
       }
     },
     "events": {
-      ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || root.child('roles').child(auth.uid).val() == 'monitor') || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && query.orderByChild == 'uid' && query.equalTo != null && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child(query.equalTo).child('routeId').val()).val() == true)",
+      ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || root.child('roles').child(auth.uid).val() == 'monitor') || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && query.orderByChild == 'uid' && query.equalTo != null && ((!root.child('assignments').child(query.equalTo).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child(query.equalTo).child('routeId').val()).val() == true) || (root.child('assignments').child(query.equalTo).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child(query.equalTo).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child(query.equalTo).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child(query.equalTo).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child(query.equalTo).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid))))",
       ".indexOn": [
         "t",
         "uid"
       ],
       "$id": {
         ".read": "auth != null && root.child('roles').child(auth.uid).val() == 'route' && data.child('uid').val() == auth.uid",
-        ".write": "(auth != null && root.child('roles').child(auth.uid).val() == 'admin' || (auth != null && root.child('roles').child(auth.uid).val() == 'route' && root.child('assignments').child(auth.uid).exists() && !data.exists() && newData.child('uid').val() == auth.uid))"
+        ".write": "(auth != null && root.child('roles').child(auth.uid).val() == 'admin' || (auth != null && root.child('roles').child(auth.uid).val() == 'route' && root.child('assignments').child(auth.uid).exists() && !data.exists() && newData.child('uid').val() == auth.uid && newData.child('type').val() != 'arrival' && newData.child('type').val() != 'departure' && newData.child('type').val() != 'return' && newData.child('type').val() != 'attendance'))"
       }
     },
     "msg": {
@@ -153,6 +176,23 @@
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         ".write": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'"
+      }
+    },
+    "dutySessions": {
+      ".read": "auth != null && root.child('roles').child(auth.uid).val() == 'admin'",
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true) || (root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child($uid).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child($uid).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child($uid).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child($uid).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid)))))"
+      }
+    },
+    "attendance": {
+      ".read": "auth != null && (root.child('roles').child(auth.uid).val() == 'admin' || root.child('roles').child(auth.uid).val() == 'monitor')",
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || (auth != null && root.child('roles').child(auth.uid).val() == 'si_monitor' && ((!root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('routes').child(root.child('assignments').child($uid).child('routeId').val()).val() == true) || (root.child('assignments').child($uid).child('dutyPoint').exists() && root.child('siScopes').child(auth.uid).child('events').child(root.child('assignments').child($uid).child('dutyPoint').child('eventId').val()).val() == true && root.child('siScopes').child(auth.uid).child('sectors').child(root.child('assignments').child($uid).child('dutyPoint').child('sectorId').val()).val() == true && (root.child('assignments').child($uid).child('supervisorUid').val() == auth.uid || root.child('assignments').child(root.child('assignments').child($uid).child('supervisorUid').val()).child('supervisorUid').val() == auth.uid)))))"
+      }
+    },
+    "reportingRoster": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid && root.child('roles').child(auth.uid).val() == 'si_monitor'"
       }
     }
   }

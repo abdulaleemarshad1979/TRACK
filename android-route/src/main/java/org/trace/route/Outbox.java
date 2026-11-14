@@ -1,6 +1,9 @@
 package org.trace.route;
 
 import android.content.Context;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -9,13 +12,23 @@ import java.util.ArrayList;
 
 final class Outbox extends SQLiteOpenHelper {
   private final Object flushGate = new Object();
-  Outbox(Context c) { super(c, "trace-outbox.db", null, 1); }
+  private final Context context;
+  Outbox(Context c) { super(c, "trace-outbox.db", null, 1); context = c.getApplicationContext(); }
   @Override public void onCreate(SQLiteDatabase db) { db.execSQL("CREATE TABLE pending (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT NOT NULL, json TEXT NOT NULL)"); }
   @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) { }
   synchronized void add(String path, Object body) {
     if (path.startsWith("live/")) getWritableDatabase().delete("pending", "path=?", new String[]{path});
     android.content.ContentValues v = new android.content.ContentValues(); v.put("path", path); v.put("json", body.toString());
     getWritableDatabase().insertOrThrow("pending", null, v);
+    if (!"1".equals(new Session(context).get("duty"))) scheduleRetry();
+  }
+  private void scheduleRetry() {
+    JobScheduler jobs = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+    if (jobs == null) return;
+    JobInfo job = new JobInfo.Builder(402, new ComponentName(context, OutboxRetryJob.class))
+      .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+      .setBackoffCriteria(30000, JobInfo.BACKOFF_POLICY_EXPONENTIAL).build();
+    jobs.schedule(job);
   }
   synchronized int size() {
     try (Cursor c = getReadableDatabase().rawQuery("SELECT count(*) FROM pending", null)) { c.moveToFirst(); return c.getInt(0); }
@@ -23,7 +36,7 @@ final class Outbox extends SQLiteOpenHelper {
   synchronized void removePath(String path) {
     getWritableDatabase().delete("pending", "path=?", new String[]{path});
   }
-  void flush(Session session) throws Exception { flush(session, Integer.MAX_VALUE); }
+  void flush(Session session) throws Exception { flush(session, 6); }
   void flush(Session session, int maxWrites) throws Exception {
     synchronized (flushGate) {
       int sent = 0;

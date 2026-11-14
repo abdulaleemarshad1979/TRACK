@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.KeyguardManager;
 import android.content.Intent;
+import android.net.Uri;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -98,6 +99,9 @@ public final class MainActivity extends Activity {
   private long lastSosTap;
   private File downloadedUpdate;
   private TextView assignmentCard;
+  private Button navigateButton;
+  private JSONObject attendanceCurrent = new JSONObject();
+  private long lastAttendanceRead;
   private EditText loginOfficer, loginMobile, loginSd;
   private TextView loginStatus;
 
@@ -127,6 +131,20 @@ public final class MainActivity extends Activity {
         telemetry.setText(bat.isEmpty()
           ? "Telemetry ready · " + q + " queued"
           : "Battery " + bat + "% · Signal " + session.get("signal") + "/4 · GPS " + session.get("gps") + speed + " · " + q + " queued" + (session.get("syncError").isEmpty() ? "" : " · Upload retry needed"));
+        refreshAssignmentCard();
+        String dutySession = session.get("sessionId").isEmpty() ? session.get("lastDutySessionId") : session.get("sessionId");
+        if (!dutySession.isEmpty() && !session.get("assignment").isEmpty() && System.currentTimeMillis() - lastAttendanceRead >= 30000) {
+          lastAttendanceRead = System.currentTimeMillis();
+          work(() -> {
+            try {
+              JSONObject current = session.dbGet("attendance/" + session.uid() + "/" + dutySession);
+              ui.post(() -> {
+                String currentSession = session.get("sessionId").isEmpty() ? session.get("lastDutySessionId") : session.get("sessionId");
+                if (dutySession.equals(currentSession)) { attendanceCurrent = current; refreshAssignmentCard(); }
+              });
+            } catch (Exception ignored) { }
+          });
+        }
       }
       ui.postDelayed(this, 5000);
     }
@@ -165,7 +183,7 @@ public final class MainActivity extends Activity {
     showScreen(isSignedIn);
 
     refreshDuty();
-    askPermissions();
+    if ("org.trace.route.CONFIRM_STOP".equals(getIntent().getAction())) ui.post(this::toggleDuty);
     ui.post(telemetryTick);
     checkForUpdates(false);
   }
@@ -176,7 +194,7 @@ public final class MainActivity extends Activity {
       mainAppView.setVisibility(View.VISIBLE);
       updateOfficerBadge();
       refreshPollingChoices();
-      if (assignmentCard != null) assignmentCard.setText("Station: " + session.get("ps") + "\nRoute: " + session.get("route") + "\nOfficer: " + session.get("officer"));
+      refreshAssignmentCard();
       switchPage(0);
     } else {
       mainAppView.setVisibility(View.GONE);
@@ -322,6 +340,10 @@ public final class MainActivity extends Activity {
         JSONObject assigned = "route".equals(session.get("role")) ? session.dbGet("assignments/" + session.uid()) : null;
         if (assigned != null && (assigned.optString("ps").isEmpty() || assigned.optString("route").isEmpty()))
           throw new SecurityException("No route assigned to this account. Contact the control room.");
+        if (assigned != null && !assigned.optString("id").equals(new JSONObject(session.get("assignment").isEmpty() ? "{}" : session.get("assignment")).optString("id"))) {
+          session.set("lastDutySessionId", ""); attendanceCurrent = new JSONObject();
+        }
+        session.set("assignment", assigned == null ? "" : assigned.toString());
         JSONObject allowed = new JSONObject();
         java.util.Iterator<String> keys = available.keys();
         while (keys.hasNext()) {
@@ -529,7 +551,7 @@ public final class MainActivity extends Activity {
     box.setPadding(dp(18), dp(14), dp(18), dp(20));
     scroll.addView(box);
 
-    section(box, "ACTIVE PATROL CONTROL");
+    section(box, "MY DUTY");
     duty = new Button(this);
     duty.setText("START DUTY");
     duty.setTextSize(16);
@@ -541,7 +563,7 @@ public final class MainActivity extends Activity {
     box.addView(duty, dpParam);
     duty.setOnClickListener(v -> toggleDuty());
 
-    section(box, "CURRENT PATROL ASSIGNMENT");
+    section(box, "ASSIGNED WORK");
     TextView unitCard = new TextView(this);
     assignmentCard = unitCard;
     unitCard.setText("Station: " + session.get("ps") + "\nRoute: " + session.get("route") + "\nOfficer: " + session.get("officer"));
@@ -552,6 +574,8 @@ public final class MainActivity extends Activity {
     LinearLayout.LayoutParams ucP = new LinearLayout.LayoutParams(-1, -2);
     ucP.bottomMargin = dp(14);
     box.addView(unitCard, ucP);
+    navigateButton = button(box, "Navigate to duty point", this::navigateToDutyPoint);
+    refreshAssignmentCard();
 
     section(box, "OFFICER SESSION & UPDATES");
     button(box, "Switch Officer / Change Police Station", () -> {
@@ -782,26 +806,78 @@ public final class MainActivity extends Activity {
       p.add(Manifest.permission.ACCESS_FINE_LOCATION);
       p.add(Manifest.permission.ACCESS_COARSE_LOCATION);
     }
-    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)
-      p.add(Manifest.permission.RECORD_AUDIO);
-    if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
-      p.add(Manifest.permission.POST_NOTIFICATIONS);
-    if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED)
-      p.add(Manifest.permission.READ_PHONE_STATE);
     if (!p.isEmpty()) requestPermissions(p.toArray(new String[0]), PERMISSION);
+  }
+
+  private void explainNotifications() {
+    if (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
+    new AlertDialog.Builder(this).setTitle("Tracking notification")
+      .setMessage("Android may hide the duty notification if notifications are denied. Duty tracking can still run; use My Duty or Android's Active apps panel to stop it.")
+      .setNegativeButton("Continue without alerts", null)
+      .setPositiveButton("Allow notifications", (d, w) -> requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERMISSION)).show();
+  }
+
+  private JSONObject dutyPoint() {
+    try { return new JSONObject(session.get("assignment")).optJSONObject("dutyPoint"); }
+    catch (Exception ignored) { return null; }
+  }
+
+  private void refreshAssignmentCard() {
+    if (assignmentCard == null) return;
+    JSONObject point = dutyPoint();
+    String work = "Officer: " + session.get("officer") + "\nStation: " + session.get("ps") + "\nRoute: " + session.get("route");
+    if (point == null) work = "No duty point allotted. Your route duty remains available. Contact the control room if a point was expected.\n" + work;
+    else work = "Duty point: " + point.optString("name", "Unnamed point") + "\n" + work
+      + "\nInstructions: " + point.optString("instructions", "Follow control-room instructions")
+      + "\nPresence: " + ownPresence();
+    long t = 0; try { t = Long.parseLong(session.get("lastFix")); } catch (Exception ignored) { }
+    if (t > 0) work += "\nMy last GPS fix: " + android.text.format.DateFormat.format("dd MMM HH:mm", t)
+      + " (" + Math.max(0, (System.currentTimeMillis() - t) / 1000) + " seconds ago)";
+    try { work += "\nMy last position: " + String.format(java.util.Locale.ROOT, "%.5f, %.5f", Double.parseDouble(session.get("lastLat")), Double.parseDouble(session.get("lastLng"))); }
+    catch (Exception ignored) { }
+    assignmentCard.setText(work);
+    if (navigateButton != null) navigateButton.setEnabled(point != null && DutyPoint.valid(point.optDouble("lat", Double.NaN), point.optDouble("lng", Double.NaN)));
+  }
+
+  private String ownPresence() {
+    if (attendanceCurrent.length() == 0) return "Not arrived (no confirmed device-location evidence)";
+    JSONObject point = dutyPoint();
+    if (point == null || !point.optString("id").equals(attendanceCurrent.optString("pointId"))) return "Not arrived";
+    String state = attendanceCurrent.optString("current", "not_arrived");
+    long fix = attendanceCurrent.optLong("latestFixTime"), arrival = attendanceCurrent.optLong("arrivalAt");
+    if (arrival > 0 && (!session.get("duty").equals("1") || fix <= 0 || System.currentTimeMillis() - fix > 90000)) state = "uncertain";
+    String label = "at".equals(state) ? "At duty point" : "left".equals(state) ? "Left duty point"
+      : "uncertain".equals(state) ? "Location uncertain" : "Not arrived";
+    return label + (arrival > 0 ? " · First arrival " + formatIst(arrival) : "");
+  }
+
+  private String formatIst(long timestamp) {
+    java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("dd MMM HH:mm 'IST'", java.util.Locale.ENGLISH);
+    format.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
+    return format.format(new java.util.Date(timestamp));
+  }
+
+  private void navigateToDutyPoint() {
+    JSONObject point = dutyPoint();
+    if (point == null) { note("No duty point allotted. Ask the control room for an assignment."); return; }
+    double lat = point.optDouble("lat", Double.NaN), lng = point.optDouble("lng", Double.NaN);
+    if (!DutyPoint.valid(lat, lng)) { note("Duty point coordinates are invalid. Ask the control room to correct them."); return; }
+    Uri destination = Uri.parse("geo:0,0?q=" + lat + "," + lng + "(" + Uri.encode(point.optString("name", "Duty point")) + ")");
+    try { startActivity(new Intent(Intent.ACTION_VIEW, destination)); }
+    catch (Exception e) { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=" + lat + "%2C" + lng))); }
   }
 
   private void refreshDuty() {
     boolean active = session.get("duty").equals("1");
     if (duty != null) {
-      duty.setText(active ? "STOP DUTY" : "START DUTY");
+      duty.setText(active ? (TrackService.running ? "STOP DUTY" : "RESUME DUTY") : "START DUTY");
       duty.setBackground(shape(active ? Color.rgb(239, 68, 68) : Color.rgb(34, 197, 94), Color.rgb(255, 255, 255)));
       duty.setTextColor(Color.WHITE);
     }
   }
 
   private void toggleDuty() {
-    if (session.get("duty").equals("1")) {
+    if (session.get("duty").equals("1") && TrackService.running) {
       KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
       if (km != null && km.isDeviceSecure()) {
         startActivityForResult(km.createConfirmDeviceCredentialIntent("Stop TRACK duty", "Confirm device credential to stop sharing location"), STOP);
@@ -816,16 +892,21 @@ public final class MainActivity extends Activity {
       return;
     }
 
-    if (!session.authenticated() || session.get("ps").isEmpty()) {
+    if (!session.authenticated() || session.get("ps").isEmpty() || session.get("assignment").isEmpty()) {
       note("Police Station not set. Sign in first.");
       showScreen(false);
       return;
     }
 
+    boolean resume = session.get("duty").equals("1");
+    new AlertDialog.Builder(this).setTitle(resume ? "Resume interrupted duty" : "Share location during duty")
+      .setMessage("Your GPS location and route trail are sent to the control room and officials assigned to your reporting scope while duty is active, including when the screen is locked or you switch apps. Stop Duty ends sharing. Precise location is needed for route and duty-point tracking.")
+      .setNegativeButton("Cancel", null).setPositiveButton("Continue", (d, w) -> prepareDuty(resume)).show();
+  }
+
+  private void prepareDuty(boolean resume) {
     if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-      askPermissions();
-      note("Allow precise location, then start duty");
-      return;
+      askPermissions(); note("Grant precise location, then tap Start Duty again. If only approximate is allowed, change it in app settings."); return;
     }
 
     android.location.LocationManager lm = (android.location.LocationManager) getSystemService(LOCATION_SERVICE);
@@ -835,24 +916,46 @@ public final class MainActivity extends Activity {
       return;
     }
 
-    session.set("sessionId", UUID.randomUUID().toString());
-    session.set("duty", "1");
-    startForegroundService(new Intent(this, TrackService.class));
-    queueEvent("start");
-    note("Duty active · Tracking started");
-    refreshDuty();
+    work(() -> {
+      try {
+        JSONObject assigned = session.dbGet("assignments/" + session.uid());
+        if (assigned.length() == 0 || !assigned.optString("ps").equals(session.get("ps")) || !assigned.optString("route").equals(session.get("route")))
+          throw new SecurityException("Your duty assignment changed. Sign in again or contact the control room.");
+        session.set("assignment", assigned.toString());
+        ui.post(() -> {
+          if (!resume || session.get("sessionId").isEmpty()) {
+            session.set("sessionId", UUID.randomUUID().toString());
+            session.set("sessionStartedAt", String.valueOf(System.currentTimeMillis()));
+            session.set("lastDutySessionId", session.get("sessionId"));
+            attendanceCurrent = new JSONObject();
+          } else if (session.get("sessionStartedAt").isEmpty()) session.set("sessionStartedAt", String.valueOf(System.currentTimeMillis()));
+          session.set("duty", "1");
+          try { startForegroundService(new Intent(this, TrackService.class)); }
+          catch (Exception e) { session.set("duty", "0"); note("Tracking could not start: " + e.getMessage()); return; }
+          if (!resume) queueEvent("start"); note("Duty active · Tracking started"); refreshAssignmentCard(); refreshDuty(); explainNotifications();
+        });
+      } catch (Exception e) { ui.post(() -> note("Cannot start duty: " + e.getMessage())); }
+    });
   }
 
   private void stopDuty() {
+    session.set("lastDutySessionId", session.get("sessionId"));
     session.set("duty", "0");
     stopService(new Intent(this, TrackService.class));
+    outbox.removePath("live/" + session.uid());
     queueEvent("stop");
     try {
-      JSONObject ended = new JSONObject().put("up", 0).put("duty", false).put("gps", false);
+      JSONObject ended = new JSONObject().put("up", System.currentTimeMillis()).put("receivedAt", new JSONObject().put(".sv", "timestamp"))
+        .put("duty", false).put("gps", false).put("sessionId", session.get("sessionId"));
+      String assignmentId = new JSONObject(session.get("assignment")).optString("id");
+      if (!assignmentId.isEmpty()) ended.put("assignmentId", assignmentId);
+      try { ended.put("lat", Double.parseDouble(session.get("lastLat"))).put("lng", Double.parseDouble(session.get("lastLng"))).put("t", Long.parseLong(session.get("lastFix"))); }
+      catch (Exception ignored) { }
       outbox.add("live/" + session.uid(), ended);
       work(() -> { try { outbox.flush(session); } catch (Exception ignored) {} });
     } catch (Exception ignored) {}
     session.set("sessionId", "");
+    session.set("sessionStartedAt", "");
     note("Duty stopped");
     refreshDuty();
   }
@@ -869,6 +972,13 @@ public final class MainActivity extends Activity {
         .put("ps", session.get("ps"))
         .put("route", session.get("route"))
         .put("sessionId", session.get("sessionId"));
+      if (type.equals("start") || type.equals("stop")) {
+        JSONObject assigned = new JSONObject(session.get("assignment"));
+        JSONObject point = assigned.optJSONObject("dutyPoint");
+        e.put("assignmentId", assigned.optString("id"))
+          .put("pointId", point == null ? "" : point.optString("id"))
+          .put("startedAt", Long.parseLong(session.get("sessionStartedAt")));
+      }
       if (!session.get("lastLat").isEmpty()) {
         e.put("lat", Double.parseDouble(session.get("lastLat")));
         e.put("lng", Double.parseDouble(session.get("lastLng")));
@@ -1048,7 +1158,7 @@ public final class MainActivity extends Activity {
     }
 
     if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-      askPermissions();
+      requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION);
       note("Allow microphone access");
       return;
     }
@@ -1097,6 +1207,12 @@ public final class MainActivity extends Activity {
     if (message != null) {
       message.setText(session.get("lastMsg").isEmpty() ? "No new control room messages." : session.get("lastMsg"));
     }
+    refreshAssignmentCard(); refreshDuty();
+  }
+
+  @Override protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent); setIntent(intent);
+    if ("org.trace.route.CONFIRM_STOP".equals(intent.getAction())) toggleDuty();
   }
 
   @Override protected void onDestroy() {

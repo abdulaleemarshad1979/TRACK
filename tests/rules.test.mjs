@@ -140,3 +140,54 @@ test('The viewer SOS check with a result limit stays within assigned routes', as
     await assertFails(get(query(ref(viewer, 'events'), limitToLast(15))));
   } finally { await env.cleanup(); }
 });
+
+test('event reporting follows authenticated supervisor IDs and revokes old access', async () => {
+  const env = await initializeTestEnvironment({ projectId: 'demo-trace', database: { rules: readFileSync(new URL('../firebase/database.rules.json', import.meta.url), 'utf8') } });
+  try {
+    await env.clearDatabase();
+    const point = id => ({ id, name: id, lat: 17, lng: 81, radiusM: 100, eventId: 'cm', sectorId: 'north' });
+    await env.withSecurityRulesDisabled(async ctx => set(ref(ctx.database(), '/'), {
+      roles: { admin: 'admin', si1: 'si_monitor', si2: 'si_monitor', ci1: 'si_monitor', ci2: 'si_monitor', a: 'route', b: 'route' },
+      siScopes: {
+        si1: { events: { cm: true }, sectors: { north: true }, routes: { r1: true } },
+        si2: { events: { cm: true }, sectors: { north: true }, routes: { r1: true } },
+        ci1: { events: { cm: true }, sectors: { north: true } },
+        ci2: { events: { cm: true }, sectors: { north: true } },
+      },
+      assignments: {
+        si1: { id: 'si1a', supervisorUid: 'ci1', dutyPoint: point('si-spot') },
+        si2: { id: 'si2a', supervisorUid: 'ci2', dutyPoint: point('si-spot-2') },
+        a: { id: 'a1', ps: 'PS', route: 'R1', routeId: 'r1', supervisorUid: 'si1', dutyPoint: point('point-a') },
+        b: { id: 'b1', ps: 'PS', route: 'R1', routeId: 'r1', supervisorUid: 'si2', dutyPoint: point('point-b') },
+      },
+      config: { routes: { r1: { ps: 'PS', route: 'R1', memberUid: 'a' } } },
+      live: { a: { lat: 17, lng: 81, t: Date.now(), up: Date.now(), duty: true }, b: { lat: 17, lng: 81, t: Date.now(), up: Date.now(), duty: true } },
+      attendance: { a: { s1: { current: 'at' } }, b: { s2: { current: 'left' } } },
+      reportingRoster: { si1: { a: true }, si2: { b: true }, ci1: { si1: true, a: true }, ci2: { si2: true, b: true } },
+    }));
+    const si1 = env.authenticatedContext('si1').database(), si2 = env.authenticatedContext('si2').database();
+    const ci1 = env.authenticatedContext('ci1').database(), ci2 = env.authenticatedContext('ci2').database();
+    const a = env.authenticatedContext('a').database(), admin = env.authenticatedContext('admin').database();
+    await assertSucceeds(get(ref(a, 'assignments/a')));
+    await assertFails(get(ref(a, 'assignments/b')));
+    await assertSucceeds(get(ref(si1, 'reportingRoster/si1')));
+    await assertFails(get(ref(si1, 'reportingRoster/si2')));
+    await assertSucceeds(get(ref(si1, 'assignments/a')));
+    await assertSucceeds(get(ref(si1, 'live/a')));
+    await assertSucceeds(get(ref(si1, 'attendance/a')));
+    await assertFails(get(ref(si1, 'assignments/b')));
+    await assertFails(get(ref(si1, 'live/b')));
+    await assertSucceeds(get(ref(ci1, 'assignments/a')));
+    await assertSucceeds(get(ref(ci1, 'attendance/a')));
+    await assertFails(get(ref(ci1, 'attendance/b')));
+    await assertSucceeds(get(ref(admin, 'attendance')));
+    await assertFails(set(ref(a, 'attendance/a/s1'), { current: 'at' }));
+    await assertFails(set(ref(a, 'events/forged-arrival'), { type: 'arrival', uid: 'a', t: Date.now() }));
+    await assertFails(set(ref(a, 'track/a/20261114/mobile/1'), [91, 81, 5, 0]));
+    await assertSucceeds(update(ref(admin), { 'assignments/a/supervisorUid': 'si2' }));
+    await assertFails(get(ref(si1, 'live/a')));
+    await assertFails(get(ref(ci1, 'attendance/a')));
+    await assertSucceeds(get(ref(si2, 'live/a')));
+    await assertSucceeds(get(ref(ci2, 'attendance/a')));
+  } finally { await env.cleanup(); }
+});
