@@ -32,7 +32,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
-import androidx.core.content.FileProvider;
 import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -769,22 +768,11 @@ public final class MainActivity extends Activity {
         String apkUrl = v.getString("apkUrl");
         if (!UpdatePolicy.validDownloadUrl(apkUrl) || remoteCode <= 0) throw new java.io.IOException("Invalid update manifest");
         if (UpdatePolicy.isNewer(BuildConfig.VERSION_CODE, remoteCode)) {
-          if (userInitiated || !session.get("dismissedUpdate").equals(String.valueOf(remoteCode)))
-            ui.post(() -> { if (!isFinishing() && !isDestroyed()) showUpdateDialog(v.optString("versionName"), v.optString("releaseNotes"), apkUrl, v.optString("sha256"), remoteCode); });
+          ui.post(() -> { if (!isFinishing() && !isDestroyed()) downloadUpdate(apkUrl, v.optString("sha256")); });
         } else if (userInitiated) note("TRACK is up to date (v" + BuildConfig.VERSION_NAME + ")");
       } catch (Exception e) { if (userInitiated) note("Could not check for updates. Check your internet connection and try again."); }
       finally { if (conn != null) conn.disconnect(); ui.post(() -> checkingUpdate = false); }
     });
-  }
-
-  private void showUpdateDialog(String versionName, String notes, String apkUrl, String expectedSha256, int remoteCode) {
-    new AlertDialog.Builder(this)
-      .setTitle("🚀 Update Available (v" + versionName + ")")
-      .setMessage(notes + "\n\nA new update is ready on GitHub. Would you like to update now?")
-      .setCancelable(true)
-      .setPositiveButton("Update Now", (d, w) -> downloadUpdate(apkUrl, expectedSha256))
-      .setNegativeButton("Later", (d, w) -> session.set("dismissedUpdate", String.valueOf(remoteCode)))
-      .show();
   }
 
   private void downloadUpdate(String apkUrl, String expectedSha256) {
@@ -824,12 +812,10 @@ public final class MainActivity extends Activity {
       return;
     }
     try {
-      android.net.Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", downloadedUpdate);
-      Intent install = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      startActivity(install);
+      ApkInstaller.install(this, downloadedUpdate);
       downloadedUpdate = null;
-      note("Install the update in Android's installer");
-    } catch (Exception e) { note("Could not open Android installer: " + e.getMessage()); }
+      note("Installing update…");
+    } catch (Exception e) { note("Could not install update: " + e.getMessage()); }
   }
 
   private void askPermissions() {

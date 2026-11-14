@@ -2,7 +2,6 @@ package org.trace.monitor;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -32,7 +31,6 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import androidx.core.content.FileProvider;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -311,13 +309,7 @@ public final class MainActivity extends Activity {
         if (!UPDATE_APK.equals(url) || !hash.matches("[0-9a-fA-F]{64}") || code <= 0) throw new java.io.IOException("Invalid update information");
         if (code > BuildConfig.VERSION_CODE && (manual || code != shownUpdateCode)) {
           shownUpdateCode = code;
-          ui.post(() -> {
-            if (isFinishing() || isDestroyed()) return;
-            new AlertDialog.Builder(this).setTitle("Trace Monitor update available")
-              .setMessage("Version " + manifest.optString("versionName", "new") + " is ready. " + manifest.optString("releaseNotes", ""))
-              .setPositiveButton("Download update", (dialog, which) -> downloadUpdate(url, hash))
-              .setNegativeButton("Later", null).show();
-          });
+          ui.post(() -> { if (!isFinishing() && !isDestroyed()) downloadUpdate(url, hash); });
         } else if (manual) toast("Trace Monitor is up to date.");
       } catch (Exception e) { if (manual) toast("Could not check for updates. Check your connection."); }
       finally { if (connection != null) connection.disconnect(); ui.post(() -> checkingUpdate = false); }
@@ -363,11 +355,10 @@ public final class MainActivity extends Activity {
       return;
     }
     try {
-      Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".files", pendingUpdate);
-      Intent install = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      startActivity(install);
+      ApkInstaller.install(this, pendingUpdate);
       pendingUpdate = null;
-    } catch (Exception e) { toast("Could not open Android installer."); }
+      toast("Installing update…");
+    } catch (Exception e) { toast("Could not install update: " + e.getMessage()); }
   }
   @Override protected void onResume() {
     super.onResume();

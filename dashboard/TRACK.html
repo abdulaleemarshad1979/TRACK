@@ -7997,7 +7997,7 @@ paneVeh = function () {
 
 
 /* ===== App version of each phone ===== */
-const APP_LATEST = "2.3.0";
+const APP_LATEST = "2.3.1";
 const vNum = v => { const m = String(v || '').match(/(\d+)\.(\d+)/); return m ? +m[1] * 100 + +m[2] : 0; };
 function appVer(u) { return (LIVE[u] && LIVE[u].v) || (DEV[u] && DEV[u].v) || ''; }
 function verState(v) { const n = vNum(v); if (!n) return ''; return n >= vNum(APP_LATEST) ? 'ok' : 'upd'; }

@@ -1,8 +1,8 @@
 {
-  "versionCode": 4,
-  "versionName": "1.2.0",
+  "versionCode": 5,
+  "versionName": "1.2.1",
   "apkUrl": "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACK/main/release/Trace-Monitor.apk",
-  "sha256": "7a7842af9fb53653d03e2b5a04b2cd57cdc01a664f533ac9f7c96d514d67e709",
+  "sha256": "e9ea090b988e4bbbb4682f279db3fae53a3960603ad8340bb298727b67137531",
   "signingCertificateSha256": "24bb04f4953b757e589e5590b57ad3ce6fc79665c0191efe4f0042eeba90547c",
-  "releaseNotes": "TRACK duty rosters, assigned-point presence and recent GPS trails."
+  "releaseNotes": "Updates now download and install automatically. TRACK duty rosters, assigned-point presence and recent GPS trails."
 }
