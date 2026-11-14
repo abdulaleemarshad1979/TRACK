@@ -748,7 +748,7 @@ for (const width of [1920, 1536, 1280, 768, 390]) {
     for (const tab of ['sum', 'veh', 'loc', 'alerts', 'inc', 'replay', 'report', 'setup']) {
       await page.locator(`#tabs [data-tab="${tab}"]`).click();
       await expect(page.locator(`#tabs [data-tab="${tab}"]`)).toHaveAttribute('aria-selected', 'true');
-      if (['sum', 'veh', 'loc'].includes(tab)) await expect(page.locator('#map')).toBeVisible();
+      if (['sum', 'veh', 'loc', 'replay'].includes(tab)) await expect(page.locator('#map')).toBeVisible();
       else await expect(page.locator('#map')).toBeHidden();
       if (tab === 'sum') {
         await expect(page.locator('.c-alerts')).toHaveCount(0);
@@ -807,6 +807,29 @@ test('administrator creates a mobile login and assigns its route without changin
   expect(authRequests).toEqual([{ email: 'phone919876543210@members.track.invalid', password: 'Example-test-password', returnSecureToken: true }]);
   expect(await page.evaluate(() => AU.uid)).toBe('admin-1');
   expect(JSON.stringify(writes)).not.toContain('password');
+});
+
+test('replay shows the map and the vehicle glides along its path when played', async ({ page }) => {
+  const base = Date.now() - 3600000, track = { b1: {} };
+  for (let i = 0; i < 20; i++) track.b1[base + i * 10000] = [17 + i * 0.001, 81.8 + i * 0.001, 10, 20];
+  await controlRoom(page, { '/devices.json': { unit1: { ps: 'Example Rural Police Station', route: 'Route 12' } } });
+  const dk = await page.evaluate(() => dayKey(Date.now()));
+  await page.route(`https://trace-demo.firebaseio.test/track/unit1/${dk}.json*`, route => route.fulfill({ json: track }));
+  await page.locator('#tabs [data-tab="replay"]').click();
+  await expect(page.locator('#map')).toBeVisible();
+  await page.locator('#rpU').selectOption('unit1');
+  await page.getByRole('button', { name: 'Show route' }).click();
+  await expect(page.locator('#rpPos')).toHaveValue('1000');
+  await page.locator('#rpPos').fill('0');
+  const start = await page.evaluate(() => RP_DRAW.car.getLatLng().lat);
+  expect(start).toBeCloseTo(17, 5);
+  await page.getByRole('button', { name: 'Play' }).click();
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => RP_DRAW.car.getLatLng().lat)).toBeGreaterThan(17.0005);
+  await page.getByRole('button', { name: 'Pause' }).click();
+  const paused = await page.evaluate(() => RP_DRAW.car.getLatLng().lat);
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => RP_DRAW.car.getLatLng().lat)).toBe(paused);
 });
 
 test('editing a route preserves its assigned member', async ({ page }) => {

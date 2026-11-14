@@ -5966,9 +5966,9 @@ function paneReplay() {
   if (!R.pts.length) return h + '<div class="banner warn">No location recorded for this vehicle on this date.</div>';
   const P = R.pts, i = Math.min(P.length - 1, Math.max(0, Math.round(R.pos * (P.length - 1)))), st = trackStats(P);
   h += `<div class="row"><button class="btn small" data-act="rpPlay">${RP_TIMER ? 'Pause' : 'Play'}</button><input type="range" id="rpPos" min="0" max="1000" value="${Math.round(R.pos * 1000)}" style="flex:1"><b>${fTs(P[i][0])}</b></div>
-    <table class="t"><tbody><tr><td>First location</td><td>${fT(P[0][0])}</td><td>Last location</td><td>${fT(P[P.length - 1][0])}</td></tr>
-    <tr><td>Distance covered</td><td><b>${fKm(st.km)}</b></td><td>Locations</td><td>${P.length}</td></tr>
-    <tr><td>Longest no-signal gap</td><td>${st.gap ? Math.round(st.gap / MIN) + ' min (from ' + fT(st.gapAt) + ')' : '–'}</td><td>Stops of ${S().stop}+ min</td><td>${st.stops.length}</td></tr></tbody></table>
+    <table class="t"><tbody><tr><td>First location</td><td>${fT(P[0][0])}</td></tr><tr><td>Last location</td><td>${fT(P[P.length - 1][0])}</td></tr>
+    <tr><td>Distance covered</td><td><b>${fKm(st.km)}</b></td></tr><tr><td>Locations</td><td>${P.length}</td></tr>
+    <tr><td>Longest no-signal gap</td><td>${st.gap ? Math.round(st.gap / MIN) + ' min (from ' + fT(st.gapAt) + ')' : '–'}</td></tr><tr><td>Stops of ${S().stop}+ min</td><td>${st.stops.length}</td></tr></tbody></table>
     ${st.stops.length ? `<h3>Stops</h3><div class="tw"><table class="t"><thead><tr><th>From</th><th>To</th><th class="num">Minutes</th><th></th></tr></thead><tbody>${st.stops.map(s => `<tr><td>${fT(s.from)}</td><td>${fT(s.to)}</td><td class="num">${Math.round((s.to - s.from) / MIN)}</td><td><button class="btn small" data-act="goto" data-lat="${s.lat}" data-lng="${s.lng}">Show</button></td></tr>`).join('')}</tbody></table></div>` : ''}
     ${st.visited ? `<h3>Polling locations of this route</h3><p>${st.visited.done.length} of ${st.visited.all} visited (within 300 m).${st.visited.miss.length ? ` <span class="note">Not visited: ${st.visited.miss.map(esc).join(', ')}</span>` : ''}</p>` : ''}`;
   return h;
@@ -5990,14 +5990,39 @@ function trackStats(P, u) {
   if (d) { const st = stations().filter(x => x.ps === d.ps && x.route && norm(x.route) === norm(d.route) && x.lat); if (st.length) { const done = st.filter(x => P.some(p => hav(p[1], p[2], +x.lat, +x.lng) < 300)); visited = { all: st.length, done: done.map(x => x.name), miss: st.filter(x => !done.includes(x)).map(x => x.name) }; } }
   return { km, gap, gapAt, stops, visited };
 }
-let RP_TIMER = null;
-function drawReplay() {
-  LAYER_R.clearLayers(); const R = UI.replay; if (!R || !R.pts || !R.pts.length) return;
-  const P = R.pts.filter(p => p[3] <= 150), i = Math.round(R.pos * (P.length - 1));
-  L.polyline(P.map(p => [p[1], p[2]]), { color: '#1f5fa8', weight: 3, opacity: .45 }).addTo(LAYER_R);
-  L.polyline(P.slice(0, i + 1).map(p => [p[1], p[2]]), { color: '#1f5fa8', weight: 5 }).addTo(LAYER_R);
-  L.circleMarker([P[0][1], P[0][2]], { radius: 7, color: '#fff', fillColor: '#1e7b45', fillOpacity: 1, weight: 2 }).bindTooltip('Start ' + fT(P[0][0])).addTo(LAYER_R);
-  if (P[i]) L.circleMarker([P[i][1], P[i][2]], { radius: 9, color: '#fff', fillColor: '#c0392b', fillOpacity: 1, weight: 3 }).bindTooltip(fTs(P[i][0]), { permanent: true, direction: 'top' }).addTo(LAYER_R);
+let RP_TIMER = null, RP_DRAW = null;
+/* Replay: one set of map layers, updated in place so the vehicle glides between recorded points and the map follows it while playing */
+function drawReplay(follow) {
+  const R = UI.replay, P = R && R.pts ? R.pts.filter(p => p[3] <= 150) : [];
+  if (!P.length) { LAYER_R.clearLayers(); RP_DRAW = null; return; }
+  if (!RP_DRAW || RP_DRAW.src !== R.pts || !LAYER_R.hasLayer(RP_DRAW.car)) {
+    LAYER_R.clearLayers();
+    L.polyline(P.map(p => [p[1], p[2]]), { color: '#1f5fa8', weight: 3, opacity: .45 }).addTo(LAYER_R);
+    L.circleMarker([P[0][1], P[0][2]], { radius: 7, color: '#fff', fillColor: '#1e7b45', fillOpacity: 1, weight: 2 }).bindTooltip('Start ' + fT(P[0][0])).addTo(LAYER_R);
+    RP_DRAW = { src: R.pts, P, done: L.polyline([], { color: '#1f5fa8', weight: 5 }).addTo(LAYER_R), panAt: 0,
+      car: L.circleMarker([P[0][1], P[0][2]], { radius: 9, color: '#fff', fillColor: '#c0392b', fillOpacity: 1, weight: 3 }).bindTooltip('', { permanent: true, direction: 'top' }).addTo(LAYER_R) };
+  }
+  const x = R.pos * (P.length - 1), i = Math.floor(x), k = x - i, a = P[i], b = P[Math.min(i + 1, P.length - 1)];
+  const ll = L.latLng(a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k), t = a[0] + (b[0] - a[0]) * k;
+  RP_DRAW.done.setLatLngs(P.slice(0, i + 1).map(p => [p[1], p[2]]).concat([ll]));
+  RP_DRAW.car.setLatLng(ll).setTooltipContent(fTs(t));
+  const now = Date.now();
+  if (follow && now - RP_DRAW.panAt > 700 && !MAP.getBounds().pad(-0.2).contains(ll)) { RP_DRAW.panAt = now; MAP.panTo(ll); }
+  const s = $('#rpPos'); if (s) { s.value = Math.round(R.pos * 1000); s.nextElementSibling.textContent = fTs(t); }
+}
+function stopReplay() { if (RP_TIMER) { cancelAnimationFrame(RP_TIMER); RP_TIMER = null; } }
+/* plays at about 5 recorded points a second, kept between 20 seconds and 2 minutes for the whole day */
+function playReplay() {
+  if (RP_TIMER) { stopReplay(); return renderPane(); }
+  const R = UI.replay; if (!R || !R.pts || !R.pts.length) return;
+  if (R.pos >= 1) R.pos = 0;
+  const dur = Math.min(120000, Math.max(20000, R.pts.length * 200)); let last = performance.now();
+  const step = now => {
+    if (UI.replay !== R || UI.tab !== 'replay') { RP_TIMER = null; return; }
+    R.pos = Math.min(1, R.pos + (now - last) / dur); last = now; drawReplay(true);
+    if (R.pos >= 1) { RP_TIMER = null; renderPane(); } else RP_TIMER = requestAnimationFrame(step);
+  };
+  RP_TIMER = requestAnimationFrame(step); renderPane();
 }
 
 /* ---------- report ---------- */
@@ -6713,8 +6738,8 @@ document.addEventListener('click', async e => {
     else if (act === 'sendTo') { const I = UI.inc; msgModal(a.dataset.u, `Go to ${I.name} immediately (https://maps.google.com/?q=${I.lat.toFixed(5)},${I.lng.toFixed(5)}). Press REACHED SPOT on arrival.`); }
     else if (act === 'replayDev') { UI.replay = { u: a.dataset.u, day: locDate(), pts: null, pos: 1 }; UI.tab = 'replay'; await loadReplay(); }
     else if (act === 'rpLoad') { UI.replay.u = $('#rpU').value; UI.replay.day = $('#rpD').value; if (!UI.replay.u) { toast('Choose a vehicle'); return; } await loadReplay(); }
-    else if (act === 'rpClear') { UI.replay.pts = null; LAYER_R.clearLayers(); renderPane(); }
-    else if (act === 'rpPlay') { if (RP_TIMER) { clearInterval(RP_TIMER); RP_TIMER = null; } else { if (UI.replay.pos >= 1) UI.replay.pos = 0; RP_TIMER = setInterval(() => { UI.replay.pos = Math.min(1, UI.replay.pos + 0.004); drawReplay(); if ($('#rpPos')) { $('#rpPos').value = Math.round(UI.replay.pos * 1000); const P = UI.replay.pts; $('#rpPos').nextElementSibling.textContent = fTs(P[Math.round(UI.replay.pos * (P.length - 1))][0]); } if (UI.replay.pos >= 1) { clearInterval(RP_TIMER); RP_TIMER = null; renderPane(); } }, 80); } renderPane(); }
+    else if (act === 'rpClear') { stopReplay(); UI.replay.pts = null; LAYER_R.clearLayers(); renderPane(); }
+    else if (act === 'rpPlay') playReplay();
     else if (act === 'report') await makeReport($('#repD').value);
     else if (act === 'routeAdd') routeModal();
     else if (act === 'newElection') await trackNewElection();
@@ -6822,7 +6847,7 @@ document.addEventListener('click', async e => {
   } catch (er) { toast(er.message, 6000); }
 });
 async function loadReplay() {
-  const R = UI.replay; R.pts = null; renderPane();
+  stopReplay(); const R = UI.replay; R.pts = null; renderPane();
   R.pts = await fetchTrack(R.u, R.day.replace(/-/g, '')); R.pos = 1;
   if (R.pts.length) { const b = L.latLngBounds(R.pts.map(p => [p[1], p[2]])); MAP.fitBounds(b.pad(0.15)); }
   drawReplay(); renderPane();
@@ -6831,7 +6856,7 @@ document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'vq') { UI.q = t.value; const p = t.selectionStart; renderPane(); const n = $('#vq'); if (n) { n.focus(); n.setSelectionRange(p, p); } }
   else if (t.id === 'activeQ') { UI.activeQ = t.value; const p = t.selectionStart; renderPane(); const n = $('#activeQ'); if (n) { n.focus(); n.setSelectionRange(p, p); } }
-  else if (t.id === 'rpPos') { if (RP_TIMER) { clearInterval(RP_TIMER); RP_TIMER = null; } UI.replay.pos = +t.value / 1000; drawReplay(); const P = UI.replay.pts; t.nextElementSibling.textContent = fTs(P[Math.round(UI.replay.pos * (P.length - 1))][0]); }
+  else if (t.id === 'rpPos') { stopReplay(); UI.replay.pos = +t.value / 1000; drawReplay(); }
 });
 document.addEventListener('change', e => {
   const t = e.target;
@@ -8384,7 +8409,7 @@ const isDash = () => UI.tab === 'sum' && !document.body.classList.contains('wall
 function applyView() {
   const d = isDash(); document.body.classList.toggle('v-dash', d);
   const setup = UI.tab === 'setup';
-  const noMap = UI.tab !== 'sum' && UI.tab !== 'veh' && UI.tab !== 'loc';
+  const noMap = !['sum', 'veh', 'loc', 'replay'].includes(UI.tab);
   const mapVisibilityChanged = document.body.classList.contains('v-no-map') !== noMap;
   const setupChanged = document.body.classList.contains('v-setup') !== setup;
   document.body.classList.toggle('v-setup', setup);
