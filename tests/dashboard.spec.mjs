@@ -34,6 +34,8 @@ test('SI monitor shows only assigned mandal routes and their live phones', async
   await expect(page.locator('#mapNote')).toContainText('1 polling booths');
   await expect.poll(() => page.evaluate(() => map.getBounds().contains([17.15, 82.1]))).toBe(true);
   expect(await page.locator('#map .leaflet-interactive').count()).toBeGreaterThanOrEqual(2);
+  // Without Leaflet's stylesheet, tiles flow into the page instead of stacking inside the map.
+  expect(await page.locator('#map .leaflet-pane').first().evaluate(e => getComputedStyle(e).position)).toBe('absolute');
   expect(await page.evaluate(() => localStorage.getItem('rm_au'))).toBeNull();
   expect(JSON.parse(await page.evaluate(() => sessionStorage.getItem('rm_si_au'))).uid).toBe('si-1');
   expect(reads).not.toContain('/config/routes/r3.json');
