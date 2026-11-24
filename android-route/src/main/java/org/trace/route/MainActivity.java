@@ -731,7 +731,7 @@ public final class MainActivity extends Activity {
     work(() -> {
       java.net.HttpURLConnection conn = null;
       try {
-        conn = (java.net.HttpURLConnection) new java.net.URL("https://raw.githubusercontent.com/abdulaleemarshad1979/TRACE/main/version.json").openConnection();
+        conn = (java.net.HttpURLConnection) new java.net.URL("https://raw.githubusercontent.com/abdulaleemarshad1979/TRACK/main/version.json").openConnection();
         conn.setConnectTimeout(8000); conn.setReadTimeout(8000); conn.setUseCaches(false);
         conn.setRequestProperty("Cache-Control", "no-cache");
         if (conn.getResponseCode() != 200) throw new java.io.IOException("Update server unavailable");

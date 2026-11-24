@@ -1,10 +1,10 @@
 {
-  "versionCode": 10,
-  "versionName": "2.3.2",
+  "versionCode": 11,
+  "versionName": "2.3.3",
   "appName": "TRACK Route",
   "district": "East Godavari District Police",
-  "apkUrl": "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACE/main/release/TRACK-Route-EastGodavari.apk",
-  "releaseNotes": "Comms tab removed, navigation moved to the top, 10-second GPS keeps running in the background, and updates install on their own.",
-  "sha256": "4a2e6d72f3e2fa1473cde3816b7670b4d449f73ef9c795545a17683caa80f1f5",
+  "apkUrl": "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACK/main/release/TRACK-Route-EastGodavari.apk",
+  "releaseNotes": "Updates now come from the TRACK repository. Comms tab removed, navigation at the top, 10-second background GPS, automatic updates.",
+  "sha256": "2e4292bd14a28eb3731c15e17e67c469a067a8ce313279f8cf800fde124263d2",
   "signingCertificateSha256": "e7310c8221c8ef469ce647aba0469b1f362ed97795ae625dd6750a34368864d7"
 }

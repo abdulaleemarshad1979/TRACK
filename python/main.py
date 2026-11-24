@@ -218,7 +218,7 @@ def get_app_version():
         "versionName": "2.0.0",
         "appName": "TRACK Route",
         "district": "East Godavari District Police",
-        "apkUrl": "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACE/main/release/TRACK-Route-EastGodavari.apk",
+        "apkUrl": "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACK/main/release/TRACK-Route-EastGodavari.apk",
         "releaseNotes": "TRACK East Godavari District Police v2.0"
     }
 

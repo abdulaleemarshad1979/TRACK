@@ -9,7 +9,7 @@ public class UpdatePolicyTest {
     assertFalse(UpdatePolicy.isNewer(3, 0));
   }
   @Test public void downloadMustBeTheOfficialHttpsApk() {
-    String good = "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACE/main/release/TRACK-Route-EastGodavari.apk";
+    String good = "https://raw.githubusercontent.com/abdulaleemarshad1979/TRACK/main/release/TRACK-Route-EastGodavari.apk";
     assertTrue(UpdatePolicy.validDownloadUrl(good));
     assertFalse(UpdatePolicy.validDownloadUrl(good.replace("https", "http")));
     assertFalse(UpdatePolicy.validDownloadUrl(good.replace("raw.githubusercontent.com", "evil.example")));
