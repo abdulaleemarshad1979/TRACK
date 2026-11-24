@@ -49,6 +49,7 @@ public final class TrackService extends Service {
   private int lastSpeedKmh;
   private LocationListener platformListener;
   private volatile boolean stopping;
+  private android.os.PowerManager.WakeLock wake;
   private String ownerUid, dutyId;
   private long lastPublished;
   private long lastQueuedFix;
@@ -70,6 +71,8 @@ public final class TrackService extends Service {
     ownerUid = session.uid(); dutyId = session.get("sessionId");
     startForeground(1, trackingNotification("Duty active • location sharing"));
     running = true;
+    wake = ((android.os.PowerManager) getSystemService(POWER_SERVICE)).newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "track:duty");
+    wake.acquire(); // keeps the 10 s tick running with the screen off
     try {
       long t = Long.parseLong(session.get("lastFix"));
       Location previous = new Location("last known");
@@ -264,6 +267,7 @@ public final class TrackService extends Service {
     if (locations != null && platformListener != null) locations.removeUpdates(platformListener);
     loop.removeCallbacks(tick);
     if (fused != null && callback != null) fused.removeLocationUpdates(callback);
+    if (wake != null && wake.isHeld()) wake.release();
     io.shutdown(); super.onDestroy();
   }
 }

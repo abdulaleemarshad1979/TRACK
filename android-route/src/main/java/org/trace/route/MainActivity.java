@@ -7,10 +7,8 @@ import android.app.KeyguardManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
-import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -78,7 +76,7 @@ public final class MainActivity extends Activity {
     "Rayavaram PS"
   };
 
-  private static final int PERMISSION = 10, PHOTO = 11, STOP = 12;
+  private static final int PERMISSION = 10, STOP = 12, BACKGROUND = 13;
   private final ExecutorService io = Executors.newSingleThreadExecutor();
   private final Handler ui = new Handler(Looper.getMainLooper());
   private Session session;
@@ -98,6 +96,7 @@ public final class MainActivity extends Activity {
   private boolean pendingAutoStart, dutyStartInProgress;
   private long lastSosTap;
   private File downloadedUpdate;
+  private long lastUpdateCheck;
   private static int attemptedUpdate; // one automatic attempt per version per app run
   private TextView assignmentCard;
   private Button navigateButton;
@@ -107,17 +106,14 @@ public final class MainActivity extends Activity {
   private TextView loginStatus;
 
   // Main screen components
-  private TextView status, message, telemetry, officerBadge;
+  private TextView status, telemetry, officerBadge;
   private EditText reportNote, votes;
   private Spinner pollingSpinner;
   private JSONObject stationCatalog = new JSONObject();
   private final java.util.ArrayList<JSONObject> pollingChoices = new java.util.ArrayList<>();
-  private Button duty, voice;
-  private MediaRecorder recorder;
-  private File audioFile;
-  private boolean recording;
-  private final View[] pages = new View[4];
-  private final Button[] navButtons = new Button[4];
+  private Button duty;
+  private final View[] pages = new View[3];
+  private final Button[] navButtons = new Button[3];
   private int currentPage = 0;
 
   private final Runnable telemetryTick = new Runnable() {
@@ -147,6 +143,7 @@ public final class MainActivity extends Activity {
           });
         }
       }
+      if (System.currentTimeMillis() - lastUpdateCheck >= 30 * 60000L) { lastUpdateCheck = System.currentTimeMillis(); checkForUpdates(false); }
       ui.postDelayed(this, 5000);
     }
   };
@@ -467,7 +464,7 @@ public final class MainActivity extends Activity {
   }
 
   // ==========================================
-  // SCREEN 2: MAIN APP (4 PAGES + BOTTOM NAV)
+  // SCREEN 2: MAIN APP (3 PAGES + TOP NAV)
   // ==========================================
   private LinearLayout buildMainAppScreen(int topPadding) {
     LinearLayout root = new LinearLayout(this);
@@ -510,29 +507,14 @@ public final class MainActivity extends Activity {
 
     root.addView(header);
 
-    // 4 Pages Container
-    FrameLayout container = new FrameLayout(this);
-    LinearLayout.LayoutParams containerParams = new LinearLayout.LayoutParams(-1, 0, 1.0f);
-    root.addView(container, containerParams);
-
-    pages[0] = buildDutyPage();
-    pages[1] = buildSosPage();
-    pages[2] = buildPollingPage();
-    pages[3] = buildCommsPage();
-
-    for (int i = 0; i < pages.length; i++) {
-      container.addView(pages[i]);
-      pages[i].setVisibility(i == 0 ? View.VISIBLE : View.GONE);
-    }
-
-    // Bottom Navigation Bar - 4 tabs
+    // Top navigation bar - 3 tabs
     LinearLayout navBar = new LinearLayout(this);
     navBar.setOrientation(LinearLayout.HORIZONTAL);
     navBar.setBackgroundColor(Color.rgb(18, 20, 28));
-    navBar.setPadding(dp(4), dp(6), dp(4), dp(8));
+    navBar.setPadding(dp(4), dp(8), dp(4), dp(6));
 
-    String[] navTitles = {"Duty", "SOS", "Polling", "Comms"};
-    for (int i = 0; i < 4; i++) {
+    String[] navTitles = {"Duty", "SOS", "Polling"};
+    for (int i = 0; i < navTitles.length; i++) {
       final int pageIndex = i;
       Button b = new Button(this);
       b.setText(navTitles[i]);
@@ -547,6 +529,21 @@ public final class MainActivity extends Activity {
       navBar.addView(b);
     }
     root.addView(navBar);
+
+    // Pages container
+    FrameLayout container = new FrameLayout(this);
+    LinearLayout.LayoutParams containerParams = new LinearLayout.LayoutParams(-1, 0, 1.0f);
+    root.addView(container, containerParams);
+
+    pages[0] = buildDutyPage();
+    pages[1] = buildSosPage();
+    pages[2] = buildPollingPage();
+
+    for (int i = 0; i < pages.length; i++) {
+      container.addView(pages[i]);
+      pages[i].setVisibility(i == 0 ? View.VISIBLE : View.GONE);
+    }
+
 
     return root;
   }
@@ -674,27 +671,6 @@ public final class MainActivity extends Activity {
     return scroll;
   }
 
-  private View buildCommsPage() {
-    ScrollView scroll = new ScrollView(this);
-    scroll.setFillViewport(true);
-    LinearLayout box = new LinearLayout(this);
-    box.setOrientation(LinearLayout.VERTICAL);
-    box.setPadding(dp(18), dp(14), dp(18), dp(20));
-    scroll.addView(box);
-
-    section(box, "FIELD MEDIA & DISPATCH");
-    button(box, "📷 Take and Send Photo", () -> startActivityForResult(new Intent("android.media.action.IMAGE_CAPTURE"), PHOTO));
-    voice = button(box, "🎤 Record Voice Message", () -> toggleRecording());
-    button(box, "▶ Play Latest Voice Message", () -> playVoice());
-
-    section(box, "CONTROL ROOM FEED");
-    message = addText(box, "No new control room messages.", 14);
-    message.setBackground(shape(Color.rgb(24, 27, 36), Color.rgb(55, 65, 81)));
-    message.setPadding(dp(12), dp(12), dp(12), dp(12));
-
-    return scroll;
-  }
-
   private String getSubDivision(String psName) {
     if (psName.contains("I Town") || psName.contains("II Town") || psName.contains("III Town") || psName.contains("Prakash Nagar") || psName.contains("Bommuru"))
       return "Rajahmundry Urban";
@@ -803,7 +779,7 @@ public final class MainActivity extends Activity {
         if (!part.renameTo(apk)) throw new java.io.IOException("Could not prepare update");
         downloadedUpdate = apk;
         ui.post(() -> openDownloadedUpdate());
-      } catch (Exception e) { part.delete(); note("Update failed: " + e.getMessage()); }
+      } catch (Exception e) { part.delete(); attemptedUpdate = 0; note("Update failed: " + e.getMessage()); }
       finally { if (conn != null) conn.disconnect(); }
     });
   }
@@ -829,6 +805,21 @@ public final class MainActivity extends Activity {
       p.add(Manifest.permission.ACCESS_COARSE_LOCATION);
     }
     if (!p.isEmpty()) requestPermissions(p.toArray(new String[0]), PERMISSION);
+  }
+
+  // Once each: "allow all the time" location, then battery-optimisation exemption, so Android keeps the 10 s GPS alive in the background.
+  private void askBackgroundAccess() {
+    if (!"1".equals(session.get("duty")) || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return;
+    if (checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED && session.get("bgAsked").isEmpty()) {
+      session.set("bgAsked", "1");
+      requestPermissions(new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION}, BACKGROUND);
+      return;
+    }
+    android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+    if (session.get("batteryAsked").isEmpty() && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+      session.set("batteryAsked", "1");
+      startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:" + getPackageName())));
+    }
   }
 
   private void explainNotifications() {
@@ -1153,114 +1144,6 @@ public final class MainActivity extends Activity {
       return;
     }
 
-    if (requestCode != PHOTO || resultCode != RESULT_OK || data == null || data.getExtras() == null || !(data.getExtras().get("data") instanceof Bitmap)) return;
-    try {
-      Bitmap b = (Bitmap) data.getExtras().get("data");
-      ByteArrayOutputStream stream = new ByteArrayOutputStream();
-      b.compress(Bitmap.CompressFormat.JPEG, 75, stream);
-      String pid = id();
-      long t = System.currentTimeMillis();
-      JSONObject photo = new JSONObject()
-        .put("uid", session.uid())
-        .put("t", t)
-        .put("ps", session.get("ps"))
-        .put("img", Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP));
-      JSONObject event = new JSONObject().put("type", "photo").put("uid", session.uid()).put("t", t).put("pid", pid);
-      outbox.add("photos/" + pid, photo);
-      outbox.add("events/" + id(), event);
-      note("Photo queued");
-      work(() -> {
-        try {
-          outbox.flush(session);
-          note("Photo delivered");
-        } catch (Exception e) {
-          note("Photo queued offline");
-        }
-      });
-    } catch (Exception e) { note("Photo failed: " + e.getMessage()); }
-  }
-
-  private void toggleRecording() {
-    if (recording) {
-      try {
-        recorder.stop();
-        recorder.release();
-        recording = false;
-        voice.setText("🎤 Record Voice Message");
-        byte[] bytes = Files.readAllBytes(audioFile.toPath());
-        if (bytes.length > 900000) {
-          note("Recording too large; keep under 1 min");
-          return;
-        }
-        long t = System.currentTimeMillis();
-        String vid = id();
-        JSONObject v = new JSONObject()
-          .put("uid", session.uid())
-          .put("a", Base64.encodeToString(bytes, Base64.NO_WRAP))
-          .put("mime", "audio/mp4")
-          .put("t", t)
-          .put("by", session.get("officer"));
-        JSONObject e = new JSONObject().put("type", "msg").put("uid", session.uid()).put("t", t).put("voice", vid).put("text", "Voice message from patrol");
-        outbox.add("voice/" + vid, v);
-        outbox.add("events/" + id(), e);
-        note("Voice message queued");
-        work(() -> {
-          try {
-            outbox.flush(session);
-            note("Voice message delivered");
-          } catch (Exception ex) {
-            note("Voice queued offline");
-          }
-        });
-      } catch (Exception e) {
-        recording = false;
-        note("Recording failed: " + e.getMessage());
-      }
-      return;
-    }
-
-    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-      requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION);
-      note("Allow microphone access");
-      return;
-    }
-
-    try {
-      audioFile = new File(getCacheDir(), "voice.m4a");
-      recorder = new MediaRecorder();
-      recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-      recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-      recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-      recorder.setOutputFile(audioFile.getAbsolutePath());
-      recorder.prepare();
-      recorder.start();
-      recording = true;
-      voice.setText("⏹ Stop and Send Recording");
-      note("Recording audio…");
-    } catch (Exception e) { note("Microphone failed: " + e.getMessage()); }
-  }
-
-  private void playVoice() {
-    String vid = session.get("lastVoice");
-    if (vid.isEmpty()) { note("No voice reply available"); return; }
-    work(() -> {
-      try {
-        JSONObject v = session.dbGet("voice/" + vid);
-        byte[] bytes = Base64.decode(v.getString("a"), Base64.DEFAULT);
-        File f = new File(getCacheDir(), "reply.m4a");
-        Files.write(f.toPath(), bytes);
-        ui.post(() -> {
-          try {
-            android.media.MediaPlayer p = new android.media.MediaPlayer();
-            p.setDataSource(f.getAbsolutePath());
-            p.prepare();
-            p.start();
-            p.setOnCompletionListener(android.media.MediaPlayer::release);
-            note("Playing dispatch voice audio");
-          } catch (Exception e) { note("Playback failed: " + e.getMessage()); }
-        });
-      } catch (Exception e) { note("Voice download failed"); }
-    });
   }
 
   @Override protected void onResume() {
@@ -1270,10 +1153,9 @@ public final class MainActivity extends Activity {
       android.location.LocationManager lm = (android.location.LocationManager) getSystemService(LOCATION_SERVICE);
       if (lm != null && lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)) resumePendingDuty();
     }
-    if (message != null) {
-      message.setText(session.get("lastMsg").isEmpty() ? "No new control room messages." : session.get("lastMsg"));
-    }
     refreshAssignmentCard(); refreshDuty();
+    askBackgroundAccess();
+    checkForUpdates(false);
   }
 
   @Override protected void onNewIntent(Intent intent) {
