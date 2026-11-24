@@ -98,7 +98,7 @@ public final class MainActivity extends Activity {
   private File downloadedUpdate;
   private long lastUpdateCheck;
   private static int attemptedUpdate; // one automatic attempt per version per app run
-  private TextView assignmentCard;
+  private TextView assignmentCard, updateLine;
   private Button navigateButton;
   private JSONObject attendanceCurrent = new JSONObject();
   private long lastAttendanceRead;
@@ -505,6 +505,13 @@ public final class MainActivity extends Activity {
     status.setPadding(0, dp(2), 0, 0);
     header.addView(status);
 
+    updateLine = new TextView(this);
+    updateLine.setText("TRACK v" + BuildConfig.VERSION_NAME);
+    updateLine.setTextSize(12);
+    updateLine.setTextColor(Color.rgb(148, 163, 184));
+    updateLine.setPadding(0, dp(2), 0, 0);
+    header.addView(updateLine);
+
     root.addView(header);
 
     // Top navigation bar - 3 tabs
@@ -724,6 +731,8 @@ public final class MainActivity extends Activity {
   private String value(EditText e) { return e == null ? "" : e.getText().toString().trim(); }
   private void work(Runnable r) { io.execute(r); }
   private void note(String s) { ui.post(() -> status.setText(s)); }
+  // Always-visible app version and update state under the header.
+  private void updateState(String s) { ui.post(() -> updateLine.setText("TRACK v" + BuildConfig.VERSION_NAME + " · " + s)); }
   private void checkForUpdates(boolean userInitiated) {
     if (checkingUpdate) return;
     checkingUpdate = true;
@@ -745,18 +754,19 @@ public final class MainActivity extends Activity {
         String apkUrl = v.getString("apkUrl");
         if (!UpdatePolicy.validDownloadUrl(apkUrl) || remoteCode <= 0) throw new java.io.IOException("Invalid update manifest");
         if (UpdatePolicy.isNewer(BuildConfig.VERSION_CODE, remoteCode)) {
+          updateState("update v" + v.optString("versionName") + " found");
           if (userInitiated || attemptedUpdate != remoteCode) {
             attemptedUpdate = remoteCode;
             ui.post(() -> { if (!isFinishing() && !isDestroyed()) downloadUpdate(apkUrl, v.optString("sha256")); });
           }
-        } else if (userInitiated) note("TRACK is up to date (v" + BuildConfig.VERSION_NAME + ")");
+        } else { updateState("up to date"); if (userInitiated) note("TRACK is up to date (v" + BuildConfig.VERSION_NAME + ")"); }
       } catch (Exception e) { if (userInitiated) note("Could not check for updates. Check your internet connection and try again."); }
       finally { if (conn != null) conn.disconnect(); ui.post(() -> checkingUpdate = false); }
     });
   }
 
   private void downloadUpdate(String apkUrl, String expectedSha256) {
-    note("Downloading verified update…");
+    note("Downloading verified update…"); updateState("downloading update…");
     work(() -> {
       HttpURLConnection conn = null;
       File part = new File(new File(getCacheDir(), "updates"), "track-update.part");
@@ -779,7 +789,7 @@ public final class MainActivity extends Activity {
         if (!part.renameTo(apk)) throw new java.io.IOException("Could not prepare update");
         downloadedUpdate = apk;
         ui.post(() -> openDownloadedUpdate());
-      } catch (Exception e) { part.delete(); attemptedUpdate = 0; note("Update failed: " + e.getMessage()); }
+      } catch (Exception e) { part.delete(); attemptedUpdate = 0; updateState("update failed, will retry"); note("Update failed: " + e.getMessage()); }
       finally { if (conn != null) conn.disconnect(); }
     });
   }
@@ -794,7 +804,7 @@ public final class MainActivity extends Activity {
     try {
       ApkInstaller.install(this, downloadedUpdate);
       downloadedUpdate = null;
-      note("Installing update…");
+      note("Installing update…"); updateState("installing update…");
     } catch (Exception e) { note("Could not install update: " + e.getMessage()); }
   }
 
