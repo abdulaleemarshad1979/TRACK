@@ -6514,7 +6514,8 @@ async function deletePersonModal(routeId, onSuccess = () => {}) {
       }
       modal.remove(); onSuccess(); toast('Person removed from the database. The route remains.', 7000);
     } catch (error) {
-      modal.querySelector('.err').textContent = identityDeleted ? 'Sign-in deleted, but the database cleanup needs a retry. ' + error.message : error.message;
+      const shown = passwordFailure(error).message;
+      modal.querySelector('.err').textContent = identityDeleted ? 'Sign-in deleted, but the database cleanup needs a retry. ' + shown : shown;
       if (identityDeleted) { modal.querySelector('[name=password]').required = false; submit.textContent = 'Retry cleanup'; }
       submit.disabled = false;
     }
