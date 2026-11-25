@@ -4544,10 +4544,12 @@ const INC_RECENT = 100, INC_FULL_MS = 5 * 60000;
 const pollForced =() => { try { return localStorage.getItem('rm_poll_force') === '1'; } catch (e) { return false; } };
 try { localStorage.removeItem('rm_poll'); } catch (e) { }   // earlier versions stayed on slower polling for good after any network blip
 const pollUntil = () => { try { return +localStorage.getItem('rm_poll_until') || 0; } catch (e) { return 0; } };
-/* Live updates by streaming; if streaming fails on this network, falls back to reading every 10 seconds. */
+/* Live updates by streaming; if streaming fails on this network, falls back to reading every 10 seconds.
+   The database host speaks HTTP/1.1 and browsers allow only 6 connections per host, so at most 4 streams stay open (devices, live, config, events)
+   and the rest use opt.poll; otherwise every database read queues behind the streams and times out. */
 function stream(path, query, target, onChange, opt) {
   opt = opt || {};
-  const s = { path, query: query || '', every: opt.every || 15000, inc: opt.inc, fullAt: 0, sig: '', lastOk: 0, es: null, ok: false, mode: pollForced() || pollUntil() > Date.now() ? 'poll' : 'stream', fails: 0, opened: false, err: '', timer: null, retry: null, heard: 0, reopens: 0 };
+  const s = { path, query: query || '', every: opt.every || 15000, inc: opt.inc, fullAt: 0, sig: '', lastOk: 0, es: null, ok: false, pinned: !!opt.poll, mode: opt.poll || pollForced() || pollUntil() > Date.now() ? 'poll' : 'stream', fails: 0, opened: false, err: '', timer: null, retry: null, heard: 0, reopens: 0 };
   const apply = (p, d, patch) => { setAt(target, p, d, patch); onChange(p); };
   const alive = () => { s.heard = Date.now(); s.reopens = 0; };
   s.poll = async () => {
@@ -4570,7 +4572,7 @@ function stream(path, query, target, onChange, opt) {
     if (s.es) s.es.close(); s.mode = 'poll'; clearInterval(s.timer); s.poll(); s.timer = setInterval(s.poll, s.every);
     // reading at intervals re-downloads the whole branch, so go back to streaming once the bad patch has had time to pass
     clearTimeout(s.retry);
-    if (!pollForced()) s.retry = setTimeout(() => { clearInterval(s.timer); s.mode = 'stream'; s.fails = 0; s.open(); }, Math.max(pollUntil() - Date.now(), 60000));
+    if (!pollForced() && !s.pinned) s.retry = setTimeout(() => { clearInterval(s.timer); s.mode = 'stream'; s.fails = 0; s.open(); }, Math.max(pollUntil() - Date.now(), 60000));
   };
   s.open = async () => {
     if (s.mode === 'poll') { s.startPoll(); return; }
@@ -4607,7 +4609,7 @@ function setConn() {
   // a polling stream counts as connected while its last successful read is recent, so a read in progress doesn't flash red
   const fresh = s => s.ok || (s.mode === 'poll' && s.lastOk && now - s.lastOk < Math.max(s.every * 2.5, 45000));
   CONN_OK = navigator.onLine && STREAMS.every(fresh);
-  const poll = STREAMS.some(s => s.mode === 'poll');
+  const poll = STREAMS.some(s => s.mode === 'poll' && !s.pinned);
   const c = document.getElementById('conn'); if (c) { c.textContent = CONN_OK ? (poll ? 'Live · auto-refresh' : 'Live') : 'Reconnecting… (tap)'; c.classList.toggle('off', !CONN_OK); }
 }
 /* connection check shown when the status label is clicked */
@@ -5039,8 +5041,8 @@ function start() {
   stream('devices', '', DEV, () => { loadTrails(); schedule(); }, { every: 15000 });
   stream('live', '', LIVE, path => { onLive(path); schedule(); }, { every: 8000 });
   if (USER_ROLE === 'admin') {
-    stream('viewerLive', '', VIEWER_LIVE, () => schedule(), { every: 8000 });
-    stream('siScopes', '', SI_SCOPES, () => schedule(), { every: 60000 });
+    stream('viewerLive', '', VIEWER_LIVE, () => schedule(), { every: 8000, poll: true });
+    stream('siScopes', '', SI_SCOPES, () => schedule(), { every: 60000, poll: true });
   }
   stream('config', '', CONF, () => { googleLayers(); const n = Object.keys(CONF.stations || {}).length; if (n !== PS_N) { PS_N = n; fitted = false; stationsSig = ''; } schedule(true); }, { every: 300000 });
   stream('events', `&orderBy="t"&startAt=${dayStart(Date.now()) - 6 * HOUR}`, EVT, () => { onEvents(); schedule(); }, { every: 15000, inc: 't' });
@@ -7127,7 +7129,7 @@ start = function () {
   if (booted) return;
   _start();
   LAYER_INC = L.layerGroup().addTo(MAP);
-  stream('incidents', `&orderBy="t"&startAt=${dayStart(Date.now()) - 2 * DAY}`, INC, () => { drawIncidents(); schedule(); }, { every: 15000 });
+  stream('incidents', `&orderBy="t"&startAt=${dayStart(Date.now()) - 2 * DAY}`, INC, () => { drawIncidents(); schedule(); }, { every: 15000, poll: true });
   setInterval(() => { checkIncidents(); pollAlerts(); }, 10000);
 };
 const SEEN_POLL = new Set(); let pollFirst = true;
@@ -7700,7 +7702,7 @@ const _startL = start;
 start = function () {
   const was = booted; _startL.apply(this, arguments);
   if (was) return;
-  try { stream('lock', '', LOCK, () => schedule(true), { every: 30000 }); } catch (e) { console.error('lock', e); }
+  try { stream('lock', '', LOCK, () => schedule(true), { every: 30000, poll: true }); } catch (e) { console.error('lock', e); }
 };
 
 

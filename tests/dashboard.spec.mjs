@@ -1652,6 +1652,11 @@ test('a frozen stream reconnects by itself and nothing on screen shows it happen
   expect(reads).not.toContain('/live.json');
 });
 
+test('at most four streams stay open, leaving connections free for database reads', async ({ page }) => {
+  await streamingControlRoom(page);
+  expect(await page.evaluate(() => OPENED.filter(s => s.readyState === 1).length)).toBeLessThanOrEqual(4);
+});
+
 test('a healthy stream is left alone and costs no extra reads', async ({ page }) => {
   const reads = await streamingControlRoom(page);
   const opened = await page.evaluate(() => OPENED.length);
