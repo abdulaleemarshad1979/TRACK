@@ -8387,7 +8387,8 @@ renderCounts = function () {
   const ids = devIds(); const n = {}; ids.forEach(u => { const k = status(u).k; n[k] = (n[k] || 0) + 1; });
   const sos = ids.filter(sosOpen).length;
   const box = (k, label, c, v, ic) => `<button type="button" class="cnt t-${k || 'all'} ${UI.fStatus === k ? 'on' : ''}" data-fs="${k}" style="--c:${c}"><i>${svg(ic, 22)}</i><span><b data-k="c-${k || 'all'}"${['nosig', 'gps', 'sos'].includes(k) ? ' data-bad="up"' : k === 'move' ? ' data-bad="down"' : ''}>${v}</b><em>${label}</em></span></button>`;
-  const tiles = box('', 'All phones', '#1f6fd1', ids.length, 'phone') + box('move', 'Moving', '#1e9e57', n.move || 0, 'move') + box('stop', 'Stopped', '#f0a500', n.stop || 0, 'pause')
+  const reg = Object.values(DEV).filter(d => !d._fromLive).length;   // phones hidden by the election / blocked-phone rules still count as registered
+  const tiles = box('', 'All phones' + (reg > ids.length ? ` <small>of ${reg} registered</small>` : ''), '#1f6fd1', ids.length, 'phone') + box('move', 'Moving', '#1e9e57', n.move || 0, 'move') + box('stop', 'Stopped', '#f0a500', n.stop || 0, 'pause')
     + box('nosig', 'No signal', '#e0413a', n.nosig || 0, 'nosig') + box('gps', 'GPS off/weak', '#8e44ad', (n.gpsoff || 0) + (n.weak || 0), 'sat') + box('sos', 'SOS', '#d62d2d', sos, 'sos');
   if ($('#counts').dataset.h !== tiles) { $('#counts').innerHTML = tiles; $('#counts').dataset.h = tiles; }
 };
